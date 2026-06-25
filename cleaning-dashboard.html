@@ -72,7 +72,7 @@
 <body>
     <div class="login-page show" id="loginPage">
         <div class="login-box">
-            <h1>Empire World</h1>
+            <a href="cleaning.html" style="display:block;text-align:left;margin-bottom:18px;color:#e6c8e6;text-decoration:none;font-size:13px;font-weight:600;">← Back to categories</a><h1>Empire World</h1>
             <div class="login-message" id="loginMessage"></div>
             <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
                 <input type="text" id="loginUsername" placeholder="Username" required>
@@ -90,7 +90,7 @@
                     <p>Cleaning Department - Projects & Daily Reports</p>
                 </div>
                 <div class="header-controls">
-                    <button onclick="resetAllData()" style="background:#C5504F;border-color:#C5504F;">🔄 Reset Data</button>
+                    <button onclick="location.href='cleaning.html'">🏠 Categories</button><button onclick="resetAllData()" style="background:#C5504F;border-color:#C5504F;">🔄 Reset Data</button>
                     <button id="logoutBtn" onclick="logout()">🚪 Logout</button>
                     <div class="header-right">Prepared by<br><strong>Marwan Dizayee</strong></div>
                 </div>

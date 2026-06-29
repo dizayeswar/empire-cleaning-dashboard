@@ -147,7 +147,8 @@ footer { text-align:center; margin-top:30px; color:#cbb6cb; font-size:12px; }
       <div id="maintFields">
         <div class="form-row">
           <div class="form-group"><label>Date</label><input type="date" id="j-date"></div>
-          <div class="form-group"><label>Job Type</label><select id="j-type"><option value="general">General Maintenance</option><option value="refundable">Refundable Work</option></select></div>
+          <div class="form-group"><label>Job Type</label><select id="j-type" onchange="toggleAmount()"><option value="general">General Maintenance</option><option value="refundable">Refundable Work</option></select></div>
+          <div class="form-group" id="j-amountwrap" style="display:none;"><label>💰 Amount (IQD)</label><input type="number" id="j-amount" placeholder="e.g. 50000" min="0" step="500" style="border-color:#e67e22;"></div>
         </div>
         <div class="form-row">
           <div class="form-group" style="grid-column:1/-1"><label>Job / Electricity Establishment</label><input type="text" id="j-job" placeholder="e.g. Socket installation, Light maintenance, Power installation…"></div>
@@ -279,6 +280,11 @@ function handleJobFile(e){ var f=e.target.files&&e.target.files[0]; if(f)process
 function handleJobPaste(e){ var items=e.clipboardData.items; for(var i=0;i<items.length;i++){ if(items[i].type.indexOf('image')!==-1){ e.preventDefault(); processPhoto(items[i].getAsFile()); return; } } }
 
 // ---- Form type toggle ----
+function toggleAmount(){
+  var isRef=document.getElementById('j-type').value==='refundable';
+  document.getElementById('j-amountwrap').style.display=isRef?'flex':'none';
+}
+
 function setFormType(type){
   currentFormType=type;
   document.getElementById('maintFields').style.display=type==='maintenance'?'block':'none';
@@ -296,6 +302,8 @@ function clearForm(){
   document.getElementById('j-materials').value='';
   document.getElementById('j-staff').value='';
   document.getElementById('j-notes').value='';
+  document.getElementById('j-amount').value='';
+  document.getElementById('j-amountwrap').style.display='none';
   document.getElementById('j-image').style.display='none';
   document.getElementById('j-imageArea').innerHTML='Click here and paste (Ctrl+V)';
   document.getElementById('cc-date').value=new Date().toISOString().split('T')[0];
@@ -330,7 +338,8 @@ function saveJob(){
       materials:document.getElementById('j-materials').value,
       staff:document.getElementById('j-staff').value,
       type:document.getElementById('j-type').value,
-      photo:currentPhoto, notes:document.getElementById('j-notes').value, token:tok() };
+      photo:currentPhoto, notes:document.getElementById('j-notes').value,
+      amount:document.getElementById('j-amount').value||'', token:tok() };
   }
   fetch(GS,{method:'POST',body:JSON.stringify(rec)}).then(r=>r.json()).then(()=>{
     alert(editId?'✅ Job updated!':'✅ Job saved!');
@@ -370,16 +379,17 @@ function renderJobs(){
   });
   rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   var total=rows.length, gen=rows.filter(r=>r.type==='general').length, ref=rows.filter(r=>r.type==='refundable').length, cc=rows.filter(r=>r.type==='callcenter').length;
-  var maint=rows.filter(r=>r.type!=='callcenter');
-  var h='<p style="color:#ccc;margin-bottom:12px;">'+total+' record(s)'+(fm?' in '+fm:'')+' &nbsp;—&nbsp; <span style="color:#7ec8f7;">🔧 '+gen+' general</span> &nbsp;·&nbsp; <span style="color:#f0a060;">📦 '+ref+' refundable</span> &nbsp;·&nbsp; <span style="color:#c8a0f0;">📞 '+cc+' call center</span></p>';
-  h+='<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Job</th><th>Location</th><th>Materials</th><th>Staff</th><th>Photo</th><th>Actions</th></tr></thead><tbody>';
-  if(rows.length===0) h+='<tr><td colspan="9" style="color:#aaa;">No records match.</td></tr>';
+  var refTotal=rows.filter(r=>r.type==='refundable').reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  var h='<p style="color:#ccc;margin-bottom:12px;">'+total+' record(s)'+(fm?' in '+fm:'')+' &nbsp;—&nbsp; <span style="color:#7ec8f7;">🔧 '+gen+' general</span> &nbsp;·&nbsp; <span style="color:#f0a060;">📦 '+ref+' refundable</span> &nbsp;·&nbsp; <span style="color:#c8a0f0;">📞 '+cc+' call center</span>'+(refTotal>0?' &nbsp;·&nbsp; <span style="color:#f9ca5a;">💰 '+fmtMoney(refTotal)+' IQD refundable total</span>':'')+'</p>';
+  h+='<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Job</th><th>Location</th><th>Materials</th><th>Staff</th><th>Amount</th><th>Photo</th><th>Actions</th></tr></thead><tbody>';
+  if(rows.length===0) h+='<tr><td colspan="10" style="color:#aaa;">No records match.</td></tr>';
   var num=0;
   rows.forEach(r=>{
     num++;
     var typeBadge='<span class="badge '+r.type+'">'+(r.type==='general'?'General':r.type==='refundable'?'Refundable':'Call Center')+'</span>';
     var photo=r.photo?'<img class="thumb" src="'+r.photo+'" onclick="bigImg(this.src)">':'—';
-    h+='<tr class="job-row"><td>'+num+'</td><td>'+r.date+'</td><td>'+typeBadge+'</td><td>'+_esc(r.job)+'</td><td>'+_esc(r.location||'')+'</td><td style="max-width:180px;word-break:break-word;">'+_esc(r.materials||'—')+'</td><td>'+_esc(r.staff||'')+'</td><td>'+photo+'</td><td><button class="act-btn" onclick="editJob(\''+r.id+'\')">✏️ Edit</button><button class="act-btn" onclick="deleteJob(\''+r.id+'\')" style="background:#C5504F;border-color:#C5504F;">🗑️</button></td></tr>';
+    var amountCell=r.type==='refundable'&&r.amount?'<span style="color:#f9ca5a;font-weight:600;">'+fmtMoney(parseFloat(r.amount))+' IQD</span>':'—';
+    h+='<tr class="job-row"><td>'+num+'</td><td>'+r.date+'</td><td>'+typeBadge+'</td><td>'+_esc(r.job)+'</td><td>'+_esc(r.location||'')+'</td><td style="max-width:160px;word-break:break-word;">'+_esc(r.materials||'—')+'</td><td>'+_esc(r.staff||'')+'</td><td>'+amountCell+'</td><td>'+photo+'</td><td><button class="act-btn" onclick="editJob(\''+r.id+'\')">✏️ Edit</button><button class="act-btn" onclick="deleteJob(\''+r.id+'\')" style="background:#C5504F;border-color:#C5504F;">🗑️</button></td></tr>';
   });
   h+='</tbody></table></div>';
   document.getElementById('jobsTable').innerHTML=h;
@@ -405,6 +415,8 @@ function editJob(id){
     document.getElementById('j-materials').value=r.materials||'';
     document.getElementById('j-staff').value=r.staff||'';
     document.getElementById('j-notes').value=r.notes||'';
+    document.getElementById('j-amount').value=r.amount||'';
+    toggleAmount();
     currentPhoto=r.photo||'';
     if(r.photo){ document.getElementById('j-image').src=r.photo; document.getElementById('j-image').style.display='block'; document.getElementById('j-imageArea').innerHTML='✅ Photo loaded'; }
     else { document.getElementById('j-image').style.display='none'; document.getElementById('j-imageArea').innerHTML='Click here and paste (Ctrl+V)'; }
@@ -500,6 +512,8 @@ function buildReportHtml(jobs,cc,summary,map,logo,monthLabel,gen){
   return b;
 }
 
+function fmtMoney(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+
 // ---- Analytics ----
 function renderAnalytics(){
   var m=document.getElementById('an-month').value||'';
@@ -507,19 +521,28 @@ function renderAnalytics(){
   var jobs=rows.filter(r=>r.type!=='callcenter');
   var cc=rows.filter(r=>r.type==='callcenter');
   var gen=jobs.filter(r=>r.type==='general').length;
-  var ref=jobs.filter(r=>r.type==='refundable').length;
+  var refJobs=jobs.filter(r=>r.type==='refundable');
+  var ref=refJobs.length;
+  var refTotal=refJobs.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
   var h='<div class="stats">';
   h+='<div class="stat-box"><div class="stat-value">'+jobs.length+'</div><div class="stat-label">Total Jobs</div></div>';
   h+='<div class="stat-box"><div class="stat-value" style="color:#7ec8f7;">'+gen+'</div><div class="stat-label">General Maintenance</div></div>';
-  h+='<div class="stat-box"><div class="stat-value" style="color:#f0a060;">'+ref+'</div><div class="stat-label">Refundable Work</div></div>';
+  h+='<div class="stat-box"><div class="stat-value" style="color:#f0a060;">'+ref+'</div><div class="stat-label">Refundable Jobs</div></div>';
+  h+='<div class="stat-box"><div class="stat-value" style="color:#f9ca5a;font-size:18px;">'+fmtMoney(refTotal)+'</div><div class="stat-label">💰 Refundable Total (IQD)</div></div>';
   h+='<div class="stat-box"><div class="stat-value" style="color:#c8a0f0;">'+cc.length+'</div><div class="stat-label">Call Center Shifts</div></div>';
-  h+='<div class="stat-box"><div class="stat-value">'+rows.length+'</div><div class="stat-label">Total Records</div></div>';
   h+='</div>';
+  if(refJobs.length>0){
+    h+='<h3>💰 Refundable Jobs'+(m?' ('+m+')':' (all time)')+'</h3>';
+    h+='<table><thead><tr><th>#</th><th>Date</th><th>Job</th><th>Location</th><th>Staff</th><th>Amount (IQD)</th></tr></thead><tbody>';
+    refJobs.forEach((r,i)=>{ h+='<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+_esc(r.job)+'</td><td>'+_esc(r.location||'')+'</td><td>'+_esc(r.staff||'')+'</td><td style="color:#f9ca5a;font-weight:600;">'+(r.amount?fmtMoney(parseFloat(r.amount))+' IQD':'—')+'</td></tr>'; });
+    h+='<tr style="font-weight:700;border-top:2px solid #a0327d;"><td colspan="5" style="text-align:right;color:#ccc;">Total:</td><td style="color:#f9ca5a;">'+fmtMoney(refTotal)+' IQD</td></tr>';
+    h+='</tbody></table>';
+  }
   if(!m){
     var months={};
-    allJobs.forEach(r=>{ var mo=monthOf(r); if(!mo)return; if(!months[mo])months[mo]={gen:0,ref:0,cc:0}; if(r.type==='general')months[mo].gen++; else if(r.type==='refundable')months[mo].ref++; else months[mo].cc++; });
-    h+='<h3>By Month</h3><table><thead><tr><th>Month</th><th>General</th><th>Refundable</th><th>Call Center</th><th>Total</th></tr></thead><tbody>';
-    Object.keys(months).sort().reverse().forEach(mo=>{ var x=months[mo]; h+='<tr><td>'+mo+'</td><td>'+x.gen+'</td><td>'+x.ref+'</td><td>'+x.cc+'</td><td>'+(x.gen+x.ref+x.cc)+'</td></tr>'; });
+    allJobs.forEach(r=>{ var mo=monthOf(r); if(!mo)return; if(!months[mo])months[mo]={gen:0,ref:0,cc:0,amt:0}; if(r.type==='general')months[mo].gen++; else if(r.type==='refundable'){months[mo].ref++;months[mo].amt+=(parseFloat(r.amount)||0);} else months[mo].cc++; });
+    h+='<h3>By Month</h3><table><thead><tr><th>Month</th><th>General</th><th>Refundable</th><th>Refundable Amount (IQD)</th><th>Call Center</th><th>Total</th></tr></thead><tbody>';
+    Object.keys(months).sort().reverse().forEach(mo=>{ var x=months[mo]; h+='<tr><td>'+mo+'</td><td>'+x.gen+'</td><td>'+x.ref+'</td><td style="color:#f9ca5a;">'+(x.amt>0?fmtMoney(x.amt)+' IQD':'—')+'</td><td>'+x.cc+'</td><td>'+(x.gen+x.ref+x.cc)+'</td></tr>'; });
     h+='</tbody></table>';
   }
   var staffCount={};

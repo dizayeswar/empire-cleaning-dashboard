@@ -108,6 +108,7 @@ footer { text-align:center; margin-top:30px; color:var(--text-faint); font-size:
         <img src="logo-light.png" alt="Empire World" style="height:42px;width:auto;display:block;margin-bottom:8px;">
         <h1>⚡ Electrical Department</h1>
         <p>Daily maintenance jobs, call center shifts & monthly reports</p>
+        <p id="whoLabel" style="font-size:12px;color:var(--text-faint);margin-top:2px;"></p>
       </div>
       <div class="header-controls">
         <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark or light mode">🌙</button>
@@ -269,6 +270,7 @@ function applyPerms(){
   show('tab-analytics', p.analytics!==false);
   show('btnReset', p.reset===true);
   show('btnTrash', p.reset===true);
+  var wl=document.getElementById('whoLabel'); if(wl){ var u=currentUser(); var role=localStorage.getItem('eldept_role')||''; wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : ''; }
 }
 function handleLogin(e){
   e.preventDefault();

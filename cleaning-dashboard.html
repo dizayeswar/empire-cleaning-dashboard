@@ -622,7 +622,7 @@
             document.getElementById('mainContainer').classList.add('show');
             applyPerms();
             loadReports(); renderTaskChecklists(); loadTasks(); loadWeekCoverage(); loadTaskPhotos();
-            if(!window._syncStarted){ window._syncStarted=true; setInterval(loadTasks, 30000); setInterval(loadWeekCoverage, 30000); setInterval(loadTaskPhotos, 30000); }
+            if(!window._syncStarted){ window._syncStarted=true; setInterval(loadTasks, 60000); setTimeout(function(){ setInterval(loadWeekCoverage, 60000); }, 20000); setTimeout(function(){ setInterval(loadTaskPhotos, 60000); }, 40000); }
             ['ec','es','wd','ww','ww2','ra'].forEach(p=>updateFloors(p));
             const d = new Date(); const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             ['ec','es','wd','ww','ww2','ra'].forEach(p=>{ const di=document.getElementById(p+'-date'); if(di)di.value=today; });

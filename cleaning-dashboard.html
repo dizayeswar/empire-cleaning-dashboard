@@ -218,6 +218,10 @@
         function checkIconHtml(color){ return '<span class="nav-icon" style="color:'+(color||'#27ae60')+';">'+CHECK_ICON+'</span>'; }
         const REFRESH_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>';
         const CALENDAR_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>';
+        const TRASH_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+        const INFO_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+        function infoIconHtml(){ return '<span class="nav-icon">'+INFO_ICON+'</span>'; }
+        function trashIconHtml(){ return '<span class="nav-icon" style="width:13px;height:13px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>'; }
         function refreshIconHtml(id){ return '<span class="nav-icon spin-icon"'+(id?(' id="'+id+'"'):'')+'>'+REFRESH_ICON+'</span>'; }
         function spinRefreshBtn(btn, ms){ if(!btn) return; var icon=btn.querySelector('.spin-icon'); if(!icon) return; icon.classList.add('spinning'); setTimeout(function(){ icon.classList.remove('spinning'); }, ms||600); }
         const IMGBB_API_KEY = '273d26dbc835282f5909b5f3e1fb8685';
@@ -350,7 +354,7 @@
               const pphotos=tphotos.filter(x=>x.project===p);
               if(preps.length===0 && pphotos.length===0) return;
               h+='<div style="margin-top:18px;"><h3 style="color:var(--accent2);">'+projName(p)+'</h3>';
-              preps.forEach(r=>{h+='<div class="form-section" style="position:relative;"><button type="button" onclick="removeReport(\''+r.id+'\', this)" title="Delete report" style="position:absolute;top:10px;right:10px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:26px;height:26px;line-height:26px;text-align:center;cursor:pointer;font-size:15px;padding:0;">×</button><h3>'+r.building+' | Floors: '+normalizeFloors(r.floors).join(', ')+'</h3><p><strong>Supervisor:</strong> '+supervisors[r.project]+'</p><p><strong>Employees:</strong> '+r.employees+' | <strong>Level:</strong> '+r.level+'</p>'; if(r.image)h+='<img src="'+r.image+'" class="report-image" onclick="openModal(this.src)" style="cursor:pointer;" loading="lazy">'; h+='</div>';});
+              preps.forEach(r=>{h+='<div class="form-section" style="position:relative;"><button type="button" onclick="removeReport(\''+r.id+'\', this)" title="Delete report" style="position:absolute;top:10px;right:10px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button><h3>'+r.building+' | Floors: '+normalizeFloors(r.floors).join(', ')+'</h3><p><strong>Supervisor:</strong> '+supervisors[r.project]+'</p><p><strong>Employees:</strong> '+r.employees+' | <strong>Level:</strong> '+r.level+'</p>'; if(r.image)h+='<img src="'+r.image+'" class="report-image" onclick="openModal(this.src)" style="cursor:pointer;" loading="lazy">'; h+='</div>';});
               if(pphotos.length){
                 const matchRep = preps[0];
                 h+='<h4 style="margin-top:14px;">'+checkIconHtml()+' Task Checklist Photos</h4>';
@@ -363,12 +367,12 @@
                   const isWeek = first.period && first.period.indexOf('#')!==-1;
                   const grpLabel = groupLabelFor(first.project, first.freq);
                   const rightLabel = isWeek ? ('Week '+first.period.split('#')[1]) : (grpLabel||first.freq||'');
-                  const thumbs = arr.map(function(x){ return '<span style="position:relative;display:inline-block;margin:0 8px 8px 0;"><img src="'+x.image+'" onclick="openModal(this.src)" style="height:80px;width:80px;object-fit:cover;border-radius:6px;border:1px solid var(--card-border);cursor:pointer;" loading="lazy"><button type="button" class="tp-del" onclick="removeTaskPhoto(\''+x.id+'\', this)" title="Delete photo" style="display:none;position:absolute;top:-8px;right:-8px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;cursor:pointer;font-size:12px;padding:0;">×</button></span>'; }).join('');
+                  const thumbs = arr.map(function(x){ return '<span style="position:relative;display:inline-block;margin:0 8px 8px 0;"><img src="'+x.image+'" onclick="openModal(this.src)" style="height:80px;width:80px;object-fit:cover;border-radius:6px;border:1px solid var(--card-border);cursor:pointer;" loading="lazy"><button type="button" class="tp-del" onclick="removeTaskPhoto(\''+x.id+'\', this)" title="Delete photo" style="display:none;position:absolute;top:-8px;right:-8px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button></span>'; }).join('');
                   h+='<div class="form-section tp-card" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">'
                     +'<div class="tp-gallery" style="flex:0 1 340px;max-height:260px;overflow-y:auto;display:flex;flex-wrap:wrap;align-content:flex-start;">'+thumbs+'</div>'
                     +'<div style="flex:1;"></div>'
                     +'<div style="flex-shrink:0;display:flex;gap:8px;">'
-                      +'<button type="button" onclick="toggleTaskPhotoDetails(this)">ℹ️ Details</button>'
+                      +'<button type="button" onclick="toggleTaskPhotoDetails(this)">'+infoIconHtml()+' Details</button>'
                       +'<button type="button" onclick="toggleTaskPhotoEdit(this)">✏️ Edit</button>'
                     +'</div>'
                     +'<div class="tp-details" style="display:none;flex-basis:100%;width:100%;margin-top:6px;padding-top:12px;border-top:1px solid var(--card-border);">'
@@ -562,13 +566,13 @@
           const panel = card.querySelector('.tp-details'); if(!panel) return;
           const show = panel.style.display==='none' || !panel.style.display;
           panel.style.display = show ? 'block' : 'none';
-          btn.textContent = show ? 'ℹ️ Hide Details' : 'ℹ️ Details';
+          btn.innerHTML = infoIconHtml() + (show ? ' Hide Details' : ' Details');
         }
         function toggleTaskPhotoEdit(btn){
           const card = btn.closest('.tp-card'); if(!card) return;
           const editing = card.classList.toggle('tp-editing');
-          card.querySelectorAll('.tp-del').forEach(function(d){ d.style.display = editing ? 'inline-block' : 'none'; });
-          btn.textContent = editing ? '✅ Done' : '✏️ Edit';
+          card.querySelectorAll('.tp-del').forEach(function(d){ d.style.display = editing ? 'flex' : 'none'; });
+          btn.innerHTML = editing ? (checkIconHtml()+' Done') : '✏️ Edit';
         }
         function removeTaskPhoto(id, btn){
           uiConfirm('Remove this photo?').then(function(ok){ if(!ok) return;
@@ -586,7 +590,7 @@
         function taskCardHtml(p, gi, ti, g, t){
           const photos=photosFor(p, g, t); const done=photos.length>0;
           let ph='';
-          photos.forEach(x=>{ ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" style="height:90px;border-radius:6px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)"><span data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border-radius:50%;width:20px;height:20px;line-height:18px;text-align:center;cursor:pointer;font-size:13px;">×</span></span>'; });
+          photos.forEach(x=>{ ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" style="height:90px;border-radius:6px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)"><span data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;">'+trashIconHtml()+'</span></span>'; });
           return '<div style="background:var(--task-bg);border:1px solid var(--card-border);border-radius:8px;padding:10px;">'
             +'<div style="margin-bottom:6px;font-weight:600;">'+(done?checkIconHtml():'<span style="color:#C5504F;">⬜</span>')+' '+t+' <span style="color:var(--text-faint);font-size:12px;font-weight:normal;">('+photos.length+' 📷)</span></div>'
             +(ph?('<div style="display:flex;flex-wrap:wrap;margin-bottom:6px;">'+ph+'</div>'):'')

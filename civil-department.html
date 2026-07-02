@@ -168,8 +168,8 @@ button:hover .nav-icon { transform: translateY(-3px); }
       <h2><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> All Jobs</h2>
       <div class="form-row">
         <div class="form-group">
-          <label>Month</label>
-          <input type="month" id="f-month" onchange="renderJobs()">
+          <label>Date</label>
+          <input type="date" id="f-month" onchange="renderJobs()">
           <span onclick="document.getElementById('f-month').value='';renderJobs();" style="font-size:11px;color:var(--text-faint);cursor:pointer;margin-top:4px;">clear</span>
         </div>
         <div class="form-group">
@@ -369,6 +369,7 @@ function loadJobs(){
       else { document.getElementById('jobsTable').innerHTML='<p style="color:var(--c-error);">⚠️ Could not load jobs — make sure the Apps Script is updated and redeployed, then refresh.</p>'; }
     }).catch(e=>{ document.getElementById('jobsTable').innerHTML='<p style="color:var(--c-error);">❌ Error: '+e.message+'</p>'; });
 }
+function dayOf(r){ var d=String(r.date||r.createdAt||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); var dt=new Date(d.replace(' ','T')); if(!isNaN(dt.getTime())){ var z=function(n){return String(n).padStart(2,'0');}; return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate()); } return ''; }
 function monthOf(r){
   var d=String(r.date||'');
   if(!/^\d{4}-\d{2}-\d{2}/.test(d)) return '';
@@ -382,7 +383,7 @@ function renderJobs(){
   var ft=document.getElementById('f-type').value||'';
   var fq=(document.getElementById('f-search').value||'').toLowerCase();
   var rows=allJobs.filter(r=>{
-    if(fm&&monthOf(r)!==fm)return false;
+    if(fm&&dayOf(r)!==fm)return false;
     if(ft&&r.type!==ft)return false;
     if(fq){ var hay=(r.job+' '+r.location+' '+r.staff+' '+r.materials).toLowerCase(); if(hay.indexOf(fq)===-1)return false; }
     return true;

@@ -9,9 +9,9 @@
     <style>
         :root{
           --bg:#f4f6fb; --text:#232a3d; --text-soft:#5b6478; --text-faint:#8a90a0;
-          --card:#ffffff; --card-border:#e2e0f0; --header-accent:#185fa5; --accent2:#534ab7;
-          --tile-hover-border:#7f77dd; --wait-bg:#efeefb; --wait-text:#534ab7; --wait-border:#cfc9ea;
-          --btn-bg:#ffffff; --btn-text:#185fa5; --btn-border:#afa9ec; --shadow:rgba(80,70,150,0.12);
+          --card:#ffffff; --card-border:#e8d3e0; --header-accent:#185fa5; --accent2:#8d015d;
+          --tile-hover-border:#8d015d; --wait-bg:#f7eaf2; --wait-text:#8d015d; --wait-border:#dcc0d2;
+          --btn-bg:#ffffff; --btn-text:#185fa5; --btn-border:#d9a3c4; --shadow:rgba(80,70,150,0.12);
           --panel:#ffffff; --back-bg:#ffffff;
         }
         html[data-theme="dark"]{
@@ -76,7 +76,7 @@ input[type=text],input[type=date],input[type=month],input[type=number],select,te
         (function(){
           function ov(){ var o=document.getElementById('uiDlg'); if(!o){ o=document.createElement('div'); o.id='uiDlg'; o.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;align-items:center;justify-content:center;'; o.innerHTML='<div style="background:var(--panel);border:2px solid var(--card-border);border-radius:14px;max-width:430px;width:92%;padding:24px;box-shadow:0 10px 40px var(--shadow);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;"><div id="uiDlgMsg" style="font-size:15px;line-height:1.5;margin-bottom:18px;white-space:pre-wrap;"></div><div id="uiDlgBtns" style="display:flex;gap:10px;justify-content:flex-end;"></div></div>'; document.body.appendChild(o); } return o; }
           function mkbtn(t,bg){ var b=document.createElement('button'); b.textContent=t; b.style.cssText='background:'+bg+';color:#fff;border:2px solid '+bg+';padding:10px 18px;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;'; return b; }
-          window.uiAlert=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var ok=mkbtn('OK','#534ab7'); ok.onclick=function(){ o.style.display='none'; res(); }; bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
+          window.uiAlert=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var ok=mkbtn('OK','#8d015d'); ok.onclick=function(){ o.style.display='none'; res(); }; bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
           window.uiConfirm=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var c=mkbtn('Cancel','#888'); c.onclick=function(){ o.style.display='none'; res(false); }; var ok=mkbtn('OK','#C5504F'); ok.onclick=function(){ o.style.display='none'; res(true); }; bw.appendChild(c); bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
           window.alert=function(m){ window.uiAlert(m); };
         })();

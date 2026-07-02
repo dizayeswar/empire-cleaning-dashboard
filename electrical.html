@@ -9,11 +9,11 @@
 <style>
 :root{
   --bg:#f4f6fb; --text:#232a3d; --text-soft:#5b6478; --text-faint:#8a90a0;
-  --panel:#ffffff; --card:#ffffff; --card-border:#e2e0f0; --input-bg:#ffffff; --input-border:#cfc9ea;
-  --header-bg:#ffffff; --header-accent:#185fa5; --accent-line:#7f77dd; --accent2:#534ab7;
-  --tab-bg:#ffffff; --tab-border:#cfc9ea; --tab-active:#534ab7; --tab-active-text:#ffffff;
-  --btn-bg:#ffffff; --btn-text:#185fa5; --btn-border:#afa9ec; --btn-hover:#efeefb;
-  --table-border:#e6e9f2; --th-color:#5b6478; --row-hover:#f3eefb; --shadow:rgba(80,70,150,0.12);
+  --panel:#ffffff; --card:#ffffff; --card-border:#e8d3e0; --input-bg:#ffffff; --input-border:#dcc0d2;
+  --header-bg:#ffffff; --header-accent:#185fa5; --accent-line:#8d015d; --accent2:#8d015d;
+  --tab-bg:#ffffff; --tab-border:#dcc0d2; --tab-active:#8d015d; --tab-active-text:#ffffff;
+  --btn-bg:#ffffff; --btn-text:#185fa5; --btn-border:#d9a3c4; --btn-hover:#f7eaf2;
+  --table-border:#e6e9f2; --th-color:#5b6478; --row-hover:#f7eaf2; --shadow:rgba(80,70,150,0.12);
   --c-general:#185fa5; --c-refundable:#b15a17; --c-callcenter:#6f3aa0; --c-money:#9a7b10; --c-error:#C5504F; --c-ok:#1d9e75;
 }
 html[data-theme="dark"]{
@@ -58,7 +58,7 @@ button:hover { background:var(--btn-hover); }
 .form-group { display:flex; flex-direction:column; }
 label { font-weight:600; margin-bottom:7px; font-size:14px; }
 input[type=text],input[type=date],input[type=month],input[type=number],select,textarea { padding:12px; border:2px solid var(--input-border); border-radius:12px; background:var(--input-bg); color:var(--text); font-size:14px; font-weight:600; }
-input[type=text]:focus,input[type=date]:focus,input[type=month]:focus,input[type=number]:focus,select:focus,textarea:focus { outline:none; box-shadow:0 0 0 3px rgba(83,74,183,0.25); }
+input[type=text]:focus,input[type=date]:focus,input[type=month]:focus,input[type=number]:focus,select:focus,textarea:focus { outline:none; box-shadow:0 0 0 3px rgba(141,1,93,0.25); }
 input[type=date],input[type=month],select { cursor:pointer; }
 input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator { cursor:pointer; opacity:0.8; }
 textarea { resize:vertical; font-family:inherit; }
@@ -130,6 +130,12 @@ body{font-family:var(--app-font,-apple-system,BlinkMacSystemFont,'Segoe UI',Robo
 h1{font-size:var(--fs-h1,28px)!important;} h2{font-size:var(--fs-h2,20px)!important;} h3{font-size:var(--fs-h3,16px)!important;}
 button,.tab-btn{font-size:var(--fs-btn,14px)!important;font-family:var(--app-font,inherit)!important;}
 input[type=text],input[type=date],input[type=month],input[type=number],select,textarea,label{font-size:var(--fs-body,14px);}
+/* Empire custom dropdowns (#8d015d hover) */
+select, ::picker(select) { appearance: base-select; }
+::picker(select) { background:var(--input-bg,#fff); color:var(--text,#232a3d); border:2px solid var(--input-border,#dcc0d2); border-radius:12px; box-shadow:0 10px 30px var(--shadow,rgba(0,0,0,0.2)); padding:6px; }
+select option { padding:10px 12px; border-radius:10px; font-weight:600; font-size:var(--fs-body,14px); background:var(--input-bg,#fff); color:var(--text,#232a3d); }
+select option:hover, select option:focus { background:#8d015d; color:#fff; }
+select option:checked { background:rgba(141,1,93,0.14); }
 </style>
 </head>
 <body>
@@ -307,7 +313,7 @@ function toggleSidebar(){ var sb=document.getElementById('sidebar'); if(!sb)retu
 (function(){
   function ov(){ var o=document.getElementById('uiDlg'); if(!o){ o=document.createElement('div'); o.id='uiDlg'; o.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;align-items:center;justify-content:center;'; o.innerHTML='<div style="background:var(--panel);border:2px solid var(--card-border);border-radius:14px;max-width:430px;width:92%;padding:24px;box-shadow:0 10px 40px var(--shadow);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;"><div id="uiDlgMsg" style="font-size:15px;line-height:1.5;margin-bottom:18px;white-space:pre-wrap;"></div><div id="uiDlgBtns" style="display:flex;gap:10px;justify-content:flex-end;"></div></div>'; document.body.appendChild(o); } return o; }
   function mkbtn(t,bg){ var b=document.createElement('button'); b.textContent=t; b.style.cssText='background:'+bg+';color:#fff;border:2px solid '+bg+';padding:10px 18px;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;'; return b; }
-  window.uiAlert=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var ok=mkbtn('OK','#534ab7'); ok.onclick=function(){ o.style.display='none'; res(); }; bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
+  window.uiAlert=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var ok=mkbtn('OK','#8d015d'); ok.onclick=function(){ o.style.display='none'; res(); }; bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
   window.uiConfirm=function(msg){ return new Promise(function(res){ var o=ov(); document.getElementById('uiDlgMsg').textContent=String(msg); var bw=document.getElementById('uiDlgBtns'); bw.innerHTML=''; var c=mkbtn('Cancel','#888'); c.onclick=function(){ o.style.display='none'; res(false); }; var ok=mkbtn('OK','#C5504F'); ok.onclick=function(){ o.style.display='none'; res(true); }; bw.appendChild(c); bw.appendChild(ok); o.style.display='flex'; setTimeout(function(){ok.focus();},30); }); };
   window.alert=function(m){ window.uiAlert(m); };
 })();
@@ -730,7 +736,7 @@ function doReset(){ var pw=document.getElementById('resetPwInput').value; var ms
   var DEF={font:'',h1:28,h2:20,h3:16,body:14,btn:14,dim:0};
   var CFG={h1:['Headings',20,40],h2:['Section titles',14,32],h3:['Small titles',12,26],body:['Body text',11,20],btn:['Buttons',11,20],dim:['Light mode dimming',0,30]};
   function unit(k){ return k==='dim'?'%':'px'; }
-  var LT={'--bg':'#f4f6fb','--panel':'#ffffff','--card':'#ffffff','--task-bg':'#f6f4fc','--header-bg':'#ffffff','--input-bg':'#ffffff','--btn-bg':'#ffffff','--tab-bg':'#ffffff','--btn-hover':'#efeefb','--row-hover':'#f3eefb'};
+  var LT={'--bg':'#f4f6fb','--panel':'#ffffff','--card':'#ffffff','--task-bg':'#faf1f6','--header-bg':'#ffffff','--input-bg':'#ffffff','--btn-bg':'#ffffff','--tab-bg':'#ffffff','--btn-hover':'#f7eaf2','--row-hover':'#f7eaf2'};
   function shade(hex,f){ var n=parseInt(hex.slice(1),16); return 'rgb('+Math.round(((n>>16)&255)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')'; }
   function applyDim(){ var r=document.documentElement.style; var isLight=document.documentElement.getAttribute('data-theme')!=='dark'; var d=(window._tsState&&window._tsState.dim)||0;
     Object.keys(LT).forEach(function(k){ if(isLight&&d>0) r.setProperty(k,shade(LT[k],1-d/100)); else r.removeProperty(k); }); }

@@ -116,6 +116,11 @@ button:hover .nav-icon { transform: translateY(-3px); }
 /* Empire pill buttons (match cleaning) */
 button, .tab-btn, .theme-btn, .act-btn { border-radius:50px !important; box-shadow:0 9px 17px var(--shadow, rgba(0,0,0,0.15)); transition:all .18s ease; }
 button:hover, .tab-btn:hover, .theme-btn:hover, .act-btn:hover { transform:translateY(-2px); }
+/* Empire text settings (match cleaning) */
+body{font-family:var(--app-font,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif)!important;font-size:var(--fs-body,14px);}
+h1{font-size:var(--fs-h1,28px)!important;} h2{font-size:var(--fs-h2,20px)!important;} h3{font-size:var(--fs-h3,16px)!important;}
+button,.tab-btn{font-size:var(--fs-btn,14px)!important;font-family:var(--app-font,inherit)!important;}
+input[type=text],input[type=date],input[type=month],input[type=number],select,textarea,label{font-size:var(--fs-body,14px);}
 </style>
 </head>
 <body>
@@ -243,7 +248,7 @@ let allIssues = [];
 let currentIssueImage = '';
 let uploadingIssue = false;
 let PAGEPERMS = {};
-function applyPerms(){
+function applyPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGlobal&&localStorage.getItem('civ_token')) window.tsLoadGlobal();
   try { PAGEPERMS = JSON.parse(localStorage.getItem('civ_perms')||'{}'); } catch(e) { PAGEPERMS = {}; }
   var p = PAGEPERMS || {};
   function hideTab(act){ document.querySelectorAll('.tab-btn').forEach(function(b){ var o=b.getAttribute('onclick')||''; if(o.indexOf("'"+act+"'")!==-1) b.style.display='none'; }); }
@@ -376,6 +381,95 @@ function buildCivilReportHtml(issues,map,rm){ var logo=''; var le=document.query
       fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'purgeTrash',dept:RB_DEPT,sheets:RB_SHEETS,token:RBTOK()})})
         .then(function(r){return r.json();}).then(function(){ window.rbLoad(); }).catch(function(e){ alert('❌ '+e.message); }); });
   };
+})();
+</script>
+
+
+<!-- ===== Text Settings panel ===== -->
+<button id="txtSetBtn" title="Text settings" onclick="document.getElementById('txtSetPanel').style.display=(document.getElementById('txtSetPanel').style.display==='block'?'none':'block')" style="position:fixed;bottom:20px;right:20px;z-index:3000;width:52px;height:52px;border-radius:50%;padding:0;font-size:19px;font-weight:700;display:none;align-items:center;justify-content:center;">Aa</button>
+<div id="txtSetPanel" style="display:none;position:fixed;bottom:84px;right:20px;z-index:3000;width:290px;background:var(--panel);border:2px solid var(--card-border);border-radius:22px;padding:18px;box-shadow:0 10px 40px var(--shadow);color:var(--text);">
+  <h3 style="margin:0 0 14px;">Text Settings</h3>
+  <label style="display:block;margin-bottom:4px;">Font</label>
+  <select id="tsFont" style="width:100%;margin-bottom:12px;">
+    <option value="">System default</option>
+    <option value="Poppins">Poppins</option>
+    <option value="Inter">Inter</option>
+    <option value="Roboto">Roboto</option>
+    <option value="Montserrat">Montserrat</option>
+    <option value="Cairo">Cairo</option>
+  </select>
+  <div id="tsSliders"></div>
+  <button id="tsSaveAllBtn" onclick="tsSaveGlobal()" style="width:100%;margin-top:6px;background:var(--accent2);color:#fff;border-color:var(--accent2);">Save for everyone</button>
+  <button onclick="tsReset()" style="width:100%;margin-top:8px;">Reset to default</button>
+</div>
+<script>
+(function(){
+  var TKEY='civ_token', RKEY='civ_role', DEPT='civil issue';
+  var DEF={font:'',h1:28,h2:20,h3:16,body:14,btn:14,dim:0};
+  var CFG={h1:['Headings',20,40],h2:['Section titles',14,32],h3:['Small titles',12,26],body:['Body text',11,20],btn:['Buttons',11,20],dim:['Light mode dimming',0,30]};
+  function unit(k){ return k==='dim'?'%':'px'; }
+  var LT={'--bg':'#f4f6fb','--panel':'#ffffff','--card':'#ffffff','--task-bg':'#f6f4fc','--header-bg':'#ffffff','--input-bg':'#ffffff','--btn-bg':'#ffffff','--tab-bg':'#ffffff','--btn-hover':'#efeefb','--row-hover':'#f3eefb'};
+  function shade(hex,f){ var n=parseInt(hex.slice(1),16); return 'rgb('+Math.round(((n>>16)&255)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')'; }
+  function applyDim(){ var r=document.documentElement.style; var isLight=document.documentElement.getAttribute('data-theme')!=='dark'; var d=(window._tsState&&window._tsState.dim)||0;
+    Object.keys(LT).forEach(function(k){ if(isLight&&d>0) r.setProperty(k,shade(LT[k],1-d/100)); else r.removeProperty(k); }); }
+  new MutationObserver(applyDim).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  function load(){ try{ return Object.assign({},DEF,JSON.parse(localStorage.getItem('ewTypography')||'{}')); }catch(e){ return Object.assign({},DEF); } }
+  function save(st){ localStorage.setItem('ewTypography',JSON.stringify(st)); }
+  function apply(st){
+    var r=document.documentElement.style;
+    r.setProperty('--fs-h1',st.h1+'px'); r.setProperty('--fs-h2',st.h2+'px'); r.setProperty('--fs-h3',st.h3+'px');
+    r.setProperty('--fs-body',st.body+'px'); r.setProperty('--fs-btn',st.btn+'px');
+    if(st.font){
+      if(!document.getElementById('tsFontLink-'+st.font)){
+        var l=document.createElement('link'); l.id='tsFontLink-'+st.font; l.rel='stylesheet';
+        l.href='https://fonts.googleapis.com/css2?family='+st.font+':wght@400;600;700&display=swap';
+        document.head.appendChild(l);
+      }
+      r.setProperty('--app-font',"'"+st.font+"',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif");
+    } else { r.removeProperty('--app-font'); }
+    window._tsState=st; applyDim();
+  }
+  var st=load();
+  function build(){
+    var wrap=document.getElementById('tsSliders'); wrap.innerHTML='';
+    Object.keys(CFG).forEach(function(k){
+      var c=CFG[k];
+      var row=document.createElement('div'); row.style.marginBottom='10px';
+      row.innerHTML='<label style="display:flex;justify-content:space-between;margin-bottom:2px;">'+c[0]+' <span id="tsv_'+k+'" style="color:var(--accent2);">'+st[k]+unit(k)+'</span></label>'
+        +'<input type="range" min="'+c[1]+'" max="'+c[2]+'" value="'+st[k]+'" data-k="'+k+'" style="width:100%;cursor:pointer;">';
+      wrap.appendChild(row);
+    });
+    wrap.querySelectorAll('input[type=range]').forEach(function(sl){
+      sl.addEventListener('input',function(){
+        var k=this.dataset.k; st[k]=parseInt(this.value);
+        document.getElementById('tsv_'+k).textContent=st[k]+unit(k);
+        apply(st); save(st);
+      });
+    });
+    var f=document.getElementById('tsFont'); f.value=st.font;
+    f.onchange=function(){ st.font=this.value; apply(st); save(st); };
+  }
+  window.tsReset=function(){ st=Object.assign({},DEF); save(st); apply(st); build(); };
+  window.tsSaveGlobal=function(){
+    var btn=document.getElementById('tsSaveAllBtn'); btn.textContent='Saving\u2026';
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'saveUiSettings',dept:DEPT,settings:st,token:localStorage.getItem(TKEY)||''})})
+      .then(function(r){return r.json();})
+      .then(function(d){ btn.textContent=(d.ok||d.success)?'\u2705 Saved for everyone':'\u274c '+(d.error||d.message||'Failed'); setTimeout(function(){btn.textContent='Save for everyone';},2500); })
+      .catch(function(e){ btn.textContent='\u274c '+e.message; setTimeout(function(){btn.textContent='Save for everyone';},2500); });
+  };
+  window.tsLoadGlobal=function(){
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',dept:DEPT,token:localStorage.getItem(TKEY)||''})})
+      .then(function(r){return r.json();})
+      .then(function(d){ if(d&&d.settings){ st=Object.assign({},DEF,d.settings); save(st); apply(st); build(); } })
+      .catch(function(e){});
+  };
+  window.tsPerm=function(){
+    var role=localStorage.getItem(RKEY)||'';
+    var tb=document.getElementById('txtSetBtn'); if(tb) tb.style.display=(role==='admin')?'flex':'none';
+    var tp=document.getElementById('txtSetPanel'); if(tp&&role!=='admin') tp.style.display='none';
+  };
+  apply(st); build(); window.tsPerm();
+  if(localStorage.getItem(TKEY)) window.tsLoadGlobal();
 })();
 </script>
 

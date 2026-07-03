@@ -57,7 +57,7 @@ button:hover { background:var(--btn-hover); }
 .form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px; margin-bottom:18px; }
 .form-group { display:flex; flex-direction:column; }
 label { font-weight:600; margin-bottom:7px; font-size:14px; }
-input[type=text],input[type=date],input[type=month],input[type=number],select,textarea { padding:12px; border:2px solid var(--input-border); border-radius:12px; background:var(--input-bg); color:var(--text); font-size:14px; font-weight:600; }
+input[type=text],input[type=date],input[type=month],input[type=number],select,textarea { padding:12px; border:2px solid var(--input-border); border-radius:50px; background:var(--input-bg); color:var(--text); font-size:14px; font-weight:600; }
 input[type=text]:focus,input[type=date]:focus,input[type=month]:focus,input[type=number]:focus,select:focus,textarea:focus { outline:none; box-shadow:0 0 0 3px rgba(141,1,93,0.25); }
 input[type=date],input[type=month],select { cursor:pointer; }
 input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator { cursor:pointer; opacity:0.8; }
@@ -377,12 +377,13 @@ function saveJob(){
 var JOBS_CACHE_KEY='civdept_jobs_cache';
 function readJobsCache(){ try{ var s=localStorage.getItem(JOBS_CACHE_KEY); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
 function writeJobsCache(a){ try{ localStorage.setItem(JOBS_CACHE_KEY, JSON.stringify(a)); }catch(e){} }
+function fetchJSONRetry(body, tries){ tries=tries||3; return fetch(GS,{method:'POST',body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).catch(function(e){ if(tries>1){ return new Promise(function(res){ setTimeout(res,800); }).then(function(){ return fetchJSONRetry(body, tries-1); }); } throw e; }); }
 function loadJobs(){
   var cached=readJobsCache();
   if(cached){ allJobs=cached; renderJobs(); renderAnalytics(); renderReportPreview(); }
   else { document.getElementById('jobsTable').innerHTML=LOADING_HTML; }
-  fetch(GS,{method:'POST',body:JSON.stringify({action:'getCivilJobs',token:tok()})})
-    .then(r=>r.json()).then(d=>{
+  fetchJSONRetry({action:'getCivilJobs',token:tok()})
+    .then(d=>{
       if(Array.isArray(d)){ allJobs=d; writeJobsCache(d); renderJobs(); renderAnalytics(); renderReportPreview(); }
       else if(d&&d.ok===false){ logout(); }
       else if(!cached){ document.getElementById('jobsTable').innerHTML='<p style="color:var(--c-error);">⚠️ Could not load jobs — make sure the Apps Script is updated and redeployed, then refresh.</p>'; }

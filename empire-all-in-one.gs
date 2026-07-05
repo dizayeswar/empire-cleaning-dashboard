@@ -17,7 +17,7 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-05-edit';
+var SCRIPT_VERSION = '2026-07-05-cleaning';
 var _SS_CACHE = null;
 function getSS_() { if (!_SS_CACHE) _SS_CACHE = SpreadsheetApp.openById(SHEET_ID); return _SS_CACHE; }
 function issuesCacheKey_(sheetName) { return 'issues_v2_' + sheetName; }
@@ -318,11 +318,11 @@ function handleSaveTasks(body) {
 function handleGetTasks(body) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(TASKS_SHEET);
-  if (!sheet || sheet.getLastRow()<1) return {ok:true,tasks:{}};
+  if (!sheet || sheet.getLastRow()<2) return {};
   var rows = sheet.getDataRange().getValues();
   // Back-compat: if body.key is supplied, behave like the legacy single-blob lookup.
   if (body.key) {
-    for (var i=0;i<rows.length;i++) {
+    for (var i=1;i<rows.length;i++) {
       if (rows[i][0]===body.key) {
         try { return {ok:true,tasks:JSON.parse(rows[i][1])}; } catch(e) { return {ok:true,tasks:{}}; }
       }
@@ -330,9 +330,9 @@ function handleGetTasks(body) {
     return {ok:true,tasks:{}};
   }
   var out = {};
-  for (var j=0;j<rows.length;j++) {
+  for (var j=1;j<rows.length;j++) {
     var k = rows[j][0]; var v = rows[j][1];
-    if (!k || k==='key') continue;
+    if (!k) continue;
     if (v===true || v==='true' || v===1) out[k] = true;
   }
   return out;

@@ -273,6 +273,30 @@ select option:checked { background:rgba(141,1,93,0.14); }
         function logout() { uiConfirm('Are you sure you want to logout?').then(function(ok){ if(!ok) return; localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); localStorage.removeItem('authToken'); localStorage.removeItem('userRole'); localStorage.removeItem('cleaning_reports_cache'); location.reload(); }); }
         function readReportsCache(){ try{ var s=localStorage.getItem('cleaning_reports_cache'); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
         function writeReportsCache(a){ try{ localStorage.setItem('cleaning_reports_cache', JSON.stringify(a)); }catch(e){} }
+        function readTasksCache(){ try{ var s=localStorage.getItem('cleaning_tasks_cache'); if(!s) return null; var o=JSON.parse(s); return (o&&typeof o==='object'&&!Array.isArray(o))?o:null; }catch(e){ return null; } }
+        function writeTasksCache(o){ try{ localStorage.setItem('cleaning_tasks_cache', JSON.stringify(o)); }catch(e){} }
+        function readWeekCovCache(){ try{ var s=localStorage.getItem('cleaning_weekcov_cache'); if(!s) return null; var o=JSON.parse(s); return (o&&typeof o==='object'&&!Array.isArray(o))?o:null; }catch(e){ return null; } }
+        function writeWeekCovCache(o){ try{ localStorage.setItem('cleaning_weekcov_cache', JSON.stringify(o)); }catch(e){} }
+        function readTaskPhotosCache(mv){ try{ var s=localStorage.getItem('cleaning_tphotos_'+mv); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
+        function writeTaskPhotosCache(mv,a){ try{ localStorage.setItem('cleaning_tphotos_'+mv, JSON.stringify(a)); }catch(e){} }
+        var _photosByMonth={};
+        var _photosFetchPromises={};
+        async function fetchTaskPhotosForMonth(mv, force){
+          if(!force && _photosByMonth[mv]) return _photosByMonth[mv];
+          if(!force && _photosFetchPromises[mv]) return _photosFetchPromises[mv];
+          var cached=readTaskPhotosCache(mv);
+          if(cached && !force){ _photosByMonth[mv]=cached; return cached; }
+          _photosFetchPromises[mv]=(async function(){
+            try{
+              const r=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:mv, token:localStorage.getItem('authToken')||''})});
+              const d=await r.json();
+              if(d && d.ok===false){ logout(); return []; }
+              if(Array.isArray(d)){ _photosByMonth[mv]=d; writeTaskPhotosCache(mv,d); return d; }
+            }catch(e){ console.error('Task photo fetch error:', e.message); }
+            return _photosByMonth[mv]||cached||[];
+          })();
+          try { return await _photosFetchPromises[mv]; } finally { delete _photosFetchPromises[mv]; }
+        }
         async function fetchJSONRetry(body, attempts){
           var lastErr=null;
           for(var attempt=0; attempt<(attempts||3); attempt++){
@@ -280,11 +304,11 @@ select option:checked { background:rgba(141,1,93,0.14); }
               var response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify(body)});
               if(!response.ok) throw new Error('Request failed: '+response.status);
               return await response.json();
-            } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 800); }); }
+            } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 400); }); }
           }
           throw lastErr || new Error('Request failed');
         }
-        async function loadReports() { const cached=readReportsCache(); if(cached){ allReports=cached; refreshDashboardView(); } var lastErr=null; for(var attempt=0; attempt<3; attempt++){ try { const response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'getReports', token:localStorage.getItem('authToken')||''})}); if(!response.ok) throw new Error('Failed to fetch: ' + response.status); const data = await response.json(); if(Array.isArray(data)) { data.forEach(r=>{ r.image = r.photo; }); allReports = data; writeReportsCache(data); refreshDashboardView(); updateDebugStatus('✅ Loaded '+allReports.length+' report(s) from the server just now.'); } else if(data && data.ok===false) { updateDebugStatus('⚠️ Server rejected the request: '+(data.message||data.error||'unknown reason')); logout(); } else { updateDebugStatus('⚠️ Server responded but not with a list. Click "Test Now" above to see the raw reply.'); } return; } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 800); }); } } console.error('Load error:', lastErr && lastErr.message); updateDebugStatus('❌ Could not reach the server: '+(lastErr && lastErr.message)); }
+        async function loadReports() { const cached=readReportsCache(); if(cached){ allReports=cached; refreshDashboardView(); } var lastErr=null; for(var attempt=0; attempt<3; attempt++){ try { const response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'getReports', token:localStorage.getItem('authToken')||''})}); if(!response.ok) throw new Error('Failed to fetch: ' + response.status); const data = await response.json(); if(Array.isArray(data)) { data.forEach(r=>{ r.image = r.photo; }); allReports = data; writeReportsCache(data); refreshDashboardView(); updateDebugStatus('✅ Loaded '+allReports.length+' report(s) from the server just now.'); } else if(data && data.ok===false) { updateDebugStatus('⚠️ Server rejected the request: '+(data.message||data.error||'unknown reason')); logout(); } else { updateDebugStatus('⚠️ Server responded but not with a list. Click "Test Now" above to see the raw reply.'); } return; } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 400); }); } } console.error('Load error:', lastErr && lastErr.message); updateDebugStatus('❌ Could not reach the server: '+(lastErr && lastErr.message)); }
         function updateDebugStatus(msg){ var el=document.getElementById('debugStatus'); if(el) el.textContent=msg; }
         async function debugTestReports(){
           updateDebugStatus('⏳ Testing…');
@@ -368,14 +392,15 @@ select option:checked { background:rgba(141,1,93,0.14); }
         async function filterByDate() {
           const d=document.getElementById('filterDate').value; if(!d) return;
           const mySeq = ++_filterCallSeq;
-          const dc=document.getElementById('dashboardContent'); if(dc) dc.innerHTML=LOADING_HTML;
-          let tphotosAll=[];
-          try {
-            const mv=reportMonthOfDate(d);
-            const r=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:mv, token:localStorage.getItem('authToken')||''})});
-            const dd=await r.json();
-            if(Array.isArray(dd)) tphotosAll=dd;
-          } catch(e){ console.error('Task photo fetch error:', e.message); }
+          const mv=reportMonthOfDate(d);
+          const cachedPhotos=_photosByMonth[mv]||readTaskPhotosCache(mv);
+          if(cachedPhotos && allReports.length){
+            _dashCache = { date:d, tphotosAll:cachedPhotos };
+            renderDashboard(d, cachedPhotos);
+          } else {
+            const dc=document.getElementById('dashboardContent'); if(dc) dc.innerHTML=LOADING_HTML;
+          }
+          let tphotosAll=await fetchTaskPhotosForMonth(mv);
           if (mySeq !== _filterCallSeq) return;
           _dashCache = { date:d, tphotosAll:tphotosAll };
           renderDashboard(d, tphotosAll);
@@ -546,6 +571,8 @@ select option:checked { background:rgba(141,1,93,0.14); }
         let taskState = {};
         function getTaskState(){ return taskState; }
         async function loadTasks(){
+          var cached=readTasksCache();
+          if(cached && JSON.stringify(cached)!==JSON.stringify(taskState)){ taskState=cached; renderTaskChecklists(); }
           try {
             const r = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'getTasks', token:localStorage.getItem('authToken')||''})});
             const d = await r.json();
@@ -556,7 +583,7 @@ select option:checked { background:rgba(141,1,93,0.14); }
               else if (!('ok' in d)) ts = d;
               else ts = {};
             }
-            if (ts !== null && JSON.stringify(ts) !== JSON.stringify(taskState)) { taskState = ts; renderTaskChecklists(); }
+            if (ts !== null && JSON.stringify(ts) !== JSON.stringify(taskState)) { taskState = ts; writeTasksCache(ts); renderTaskChecklists(); }
           } catch(e){ console.error('Task load error:', e.message); }
         }
         async function persistTask(key, done){
@@ -571,11 +598,13 @@ select option:checked { background:rgba(141,1,93,0.14); }
         function currentWeekStart(){ return weekStartOf(taskTodayStr()); }
         let weekCov = {};
         async function loadWeekCoverage(){
+          var cached=readWeekCovCache();
+          if(cached && JSON.stringify(cached)!==JSON.stringify(weekCov)){ weekCov=cached; renderTaskChecklists(); }
           try {
             const r=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getWeekCoverage', weekStart:currentWeekStart(), token:localStorage.getItem('authToken')||''})});
             const d=await r.json();
             if(d && d.ok===false){ logout(); return; }
-            if(d && typeof d==='object' && !Array.isArray(d)){ if(JSON.stringify(d)!==JSON.stringify(weekCov)){ weekCov=d; renderTaskChecklists(); } }
+            if(d && typeof d==='object' && !Array.isArray(d)){ if(JSON.stringify(d)!==JSON.stringify(weekCov)){ weekCov=d; writeWeekCovCache(d); renderTaskChecklists(); } }
           } catch(e){ console.error('Week coverage load error:', e.message); }
         }
         async function markDailyWeek(p, task, done, image){
@@ -608,15 +637,22 @@ select option:checked { background:rgba(141,1,93,0.14); }
         function reportMonthOfDate(d){ d=String(d||''); if(!/^\d{4}-\d{2}-\d{2}/.test(d)){ var t=new Date(); var z=function(n){return String(n).padStart(2,'0');}; d=t.getFullYear()+'-'+z(t.getMonth()+1)+'-'+z(t.getDate()); } var yr=parseInt(d.slice(0,4),10), mo=parseInt(d.slice(5,7),10), dy=parseInt(d.slice(8,10),10); if(dy>=26){ mo+=1; if(mo>12){mo=1;yr+=1;} } return yr+'-'+String(mo).padStart(2,'0'); }
         function reportPeriodBounds(rm){ if(!rm) return null; var p=rm.split('-'); var y=parseInt(p[0],10), m=parseInt(p[1],10); var pm=m-1, py=y; if(pm<1){pm=12;py--;} var z=function(n){return String(n).padStart(2,'0');}; return {from:py+'-'+z(pm)+'-26', to:y+'-'+z(m)+'-25'}; }
         function curMonth(){ return reportMonthOfDate(taskTodayStr()); }
-        async function loadTaskPhotos(){
+        async function loadTaskPhotos(refresh){
+          var mv=curMonth();
+          var cached=readTaskPhotosCache(mv);
+          if(cached){
+            _photosByMonth[mv]=cached;
+            pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !cached.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
+            var merged=cached.slice(); pendingPhotos.forEach(function(pp){ if(!merged.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp); });
+            if(JSON.stringify(merged)!==JSON.stringify(taskPhotos)){ taskPhotos=merged; renderTaskChecklists(); }
+          }
+          if(!refresh && cached) return;
           try{
-            const r=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:curMonth(), token:localStorage.getItem('authToken')||''})});
-            const d=await r.json();
-            if(d && d.ok===false){ logout(); return; }
+            const d=await fetchTaskPhotosForMonth(mv, !!refresh);
             if(Array.isArray(d)){
               pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !d.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
-              var merged=d.slice(); pendingPhotos.forEach(function(pp){ if(!merged.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp); });
-              if(JSON.stringify(merged)!==JSON.stringify(taskPhotos)){ taskPhotos=merged; renderTaskChecklists(); }
+              var merged2=d.slice(); pendingPhotos.forEach(function(pp){ if(!merged2.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged2.push(pp); });
+              if(JSON.stringify(merged2)!==JSON.stringify(taskPhotos)){ taskPhotos=merged2; renderTaskChecklists(); }
             }
           }catch(e){ console.error('Task photos load error:', e.message); }
         }
@@ -686,7 +722,7 @@ select option:checked { background:rgba(141,1,93,0.14); }
           const key=taskCardKey(p, gi, ti); const editing=!!taskEditOpen[key]; const pending=pendingTaskUpload[key];
           let ph='';
           if(editing){
-            photos.forEach(x=>{ ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" style="height:90px;border-radius:12px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)"><button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button></span>'; });
+            photos.forEach(x=>{ ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" loading="lazy" decoding="async" style="height:90px;border-radius:12px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)"><button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button></span>'; });
           }
           let pendingHtml='';
           if(pending && pending.url){
@@ -964,13 +1000,28 @@ select option:checked { background:rgba(141,1,93,0.14); }
             var tp = document.getElementById('txtSetPanel'); if(tp && role!=='admin') tp.style.display='none';
             var wl = document.getElementById('whoLabel'); if(wl) wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : '';
         }
+        var _lastPermFetch=0;
         function refreshPerms(){
             var tk=localStorage.getItem('authToken');
             if(!tk) return;
+            var now=Date.now();
+            if(now-_lastPermFetch<300000) return;
+            _lastPermFetch=now;
             fetchJSONRetry({action:'getPerms', token:tk}).then(function(d){
                 if(d&&d.ok&&d.role){ localStorage.setItem('userRole', d.role); applyPerms(); }
                 else if(d&&d.ok===false && String(d.error||'').toLowerCase().indexOf('token')!==-1){ logout(); }
             }).catch(function(){});
+        }
+        function startSyncPolling(){
+            if(window._syncStarted) return;
+            window._syncStarted=true;
+            function poll(fn, ms){ return setInterval(function(){ if(!document.hidden) fn(); }, ms); }
+            poll(loadTasks, 120000);
+            setTimeout(function(){ poll(loadWeekCoverage, 120000); }, 20000);
+            setTimeout(function(){ poll(function(){ loadTaskPhotos(true); }, 120000); }, 40000);
+            document.addEventListener('visibilitychange', function(){
+              if(!document.hidden){ loadTasks(); loadWeekCoverage(); loadTaskPhotos(true); }
+            });
         }
         function enterDashboard(){
             document.getElementById('loginPage').classList.remove('show');
@@ -978,14 +1029,19 @@ select option:checked { background:rgba(141,1,93,0.14); }
             applyPerms();
             refreshPerms();
             if(window.tsLoadGlobal) window.tsLoadGlobal();
-            loadReports(); renderTaskChecklists(); loadTasks(); loadWeekCoverage(); loadTaskPhotos(); buildProjectFilterBoxes();
-            if(!window._syncStarted){ window._syncStarted=true; setInterval(loadTasks, 60000); setTimeout(function(){ setInterval(loadWeekCoverage, 60000); }, 20000); setTimeout(function(){ setInterval(loadTaskPhotos, 60000); }, 40000); }
+            var tc=readTasksCache(); if(tc) taskState=tc;
+            var wc=readWeekCovCache(); if(wc) weekCov=wc;
+            var tp=readTaskPhotosCache(curMonth()); if(tp){ taskPhotos=tp; _photosByMonth[curMonth()]=tp; }
+            buildProjectFilterBoxes();
+            renderTaskChecklists();
+            setTimeout(function(){ loadReports(); loadTasks(); loadWeekCoverage(); loadTaskPhotos(true); }, 0);
+            startSyncPolling();
             ['ec','es','wd','ww','ww2','ra'].forEach(p=>updateFloors(p));
             const d = new Date(); const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             ['ec','es','wd','ww','ww2','ra'].forEach(p=>{ const di=document.getElementById(p+'-date'); if(di)di.value=today; });
             if(document.getElementById('filterDate')) document.getElementById('filterDate').value=today;
         }
-        window.addEventListener('load', () => {
+        function bootDashboard(){
             if (localStorage.getItem('authToken')) {
                 enterDashboard();
             } else {
@@ -993,7 +1049,8 @@ select option:checked { background:rgba(141,1,93,0.14); }
                 document.getElementById('loginPage').classList.add('show');
                 document.getElementById('mainContainer').classList.remove('show');
             }
-        });
+        }
+        if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bootDashboard); else bootDashboard();
     </script>
     <div id="resetModal" class="modal" style="z-index:1600;">
       <div style="background:var(--panel);border:2px solid var(--card-border);border-radius:22px;max-width:440px;width:92%;padding:28px;box-shadow:0 10px 40px var(--shadow);">
@@ -1149,14 +1206,16 @@ select option:checked { background:rgba(141,1,93,0.14); }
       .then(function(d){ btn.textContent=(d.ok||d.success)?'\u2705 Saved for everyone':'\u274c '+(d.error||d.message||'Failed'); setTimeout(function(){btn.textContent='Save for everyone';},2500); })
       .catch(function(e){ btn.textContent='\u274c '+e.message; setTimeout(function(){btn.textContent='Save for everyone';},2500); });
   };
+  var _tsGlobalLoaded=false;
   window.tsLoadGlobal=function(){
+    if(_tsGlobalLoaded) return;
+    _tsGlobalLoaded=true;
     fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',token:localStorage.getItem('authToken')||''})})
       .then(function(r){return r.json();})
       .then(function(d){ if(d&&d.settings){ st=Object.assign({},DEF,d.settings); save(st); apply(st); build(); } })
-      .catch(function(e){});
+      .catch(function(){ _tsGlobalLoaded=false; });
   };
   apply(st); build();
-  if(localStorage.getItem('isLoggedIn')==='true') window.tsLoadGlobal();
 })();
 </script>
 </body>

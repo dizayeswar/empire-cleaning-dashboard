@@ -126,3 +126,36 @@ tr.job-row:hover {
 .close-x {
   font-size: 28px;
 }
+
+.month-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.month-input-wrap input[type='month'] {
+  width: 100%;
+}
+
+.month-input-wrap input[type='month']:not(.has-value)::-webkit-datetime-edit {
+  opacity: 0;
+}
+
+.month-input-wrap input[type='month']:not(.has-value)::-webkit-datetime-edit-fields-wrapper {
+  opacity: 0;
+}
+
+.month-input-wrap .month-ph {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.month-input-wrap input[type='month'].has-value ~ .month-ph,
+.month-input-wrap input[type='month']:focus ~ .month-ph {
+  display: none;
+}

@@ -223,3 +223,29 @@ function toggleSidebar() {
     dim();
   } catch (e) {}
 })();
+
+function syncMonthInput(input) {
+  if (!input) return;
+  input.classList.toggle('has-value', !!input.value);
+}
+
+function initMonthPickers() {
+  document.querySelectorAll('.month-input-wrap input[type="month"]').forEach(function (input) {
+    syncMonthInput(input);
+    if (input._monthBound) return;
+    input._monthBound = true;
+    input.addEventListener('change', function () {
+      syncMonthInput(input);
+    });
+    input.addEventListener('input', function () {
+      syncMonthInput(input);
+    });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMonthPickers);
+} else {
+  initMonthPickers();
+}
+window.addEventListener('load', initMonthPickers);

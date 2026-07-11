@@ -249,6 +249,12 @@ function pruneExpiredTokens_(ss) {
     if (keep.length>0) tsheet.getRange(2,1,keep.length,5).setValues(keep);
   } catch(e) { /* never let cleanup break login */ }
 }
+function tokenDeptAllows_(tokenDept, requiredDept) {
+  tokenDept = String(tokenDept||'').trim().toLowerCase();
+  requiredDept = String(requiredDept||'').trim().toLowerCase();
+  if (tokenDept === 'all') return true;
+  return tokenDept === requiredDept;
+}
 function handleLogin(body) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(USERS_SHEET);
@@ -256,21 +262,22 @@ function handleLogin(body) {
   var rows = sheet.getDataRange().getValues();
   var username = String(body.username||'').trim().toLowerCase();
   var password = String(body.password||'').trim();
-  var dept = String(body.dept||'').trim().toLowerCase();
-  if (!dept) dept = 'cleaning';
+  var requestedDept = String(body.dept||'').trim().toLowerCase();
+  if (!requestedDept) requestedDept = 'cleaning';
   for (var i=1;i<rows.length;i++) {
     var uname = String(rows[i][0]||'').trim().toLowerCase();
     var upass = String(rows[i][1]||'').trim();
     var userDept = String(rows[i][2]||'').trim().toLowerCase();
     if (uname===username && upass===password) {
-      var allowed = (userDept===''||userDept==='all'||userDept===dept);
+      var allowed = (userDept===''||userDept==='all'||userDept===requestedDept);
       if (!allowed) return {ok:false,success:false,message:'This login is not allowed for this section',error:'This login is not allowed for this section'};
       var rp = computePerms_(rows[i][3], rows[i][4]);
+      var tokenDept = (userDept===''||userDept==='all') ? 'all' : userDept;
       var token = Utilities.getUuid();
       var tsheet = ss.getSheetByName(TOKENS_SHEET) || ss.insertSheet(TOKENS_SHEET);
       pruneExpiredTokens_(ss);
-      tsheet.appendRow([token, username, dept, new Date().getTime(), rp.role]);
-      return {ok:true,success:true,token:token,username:username,dept:dept,role:rp.role,perms:rp.perms,message:'Login successful'};
+      tsheet.appendRow([token, username, tokenDept, new Date().getTime(), rp.role]);
+      return {ok:true,success:true,token:token,username:username,dept:tokenDept,role:rp.role,perms:rp.perms,message:'Login successful'};
     }
   }
   return {ok:false,success:false,message:'Invalid username or password',error:'Invalid username, password, or department'};
@@ -313,7 +320,7 @@ function verifyToken(token, requiredDept) {
     var hit = cache.get(tkey);
     if (hit) {
       var cached = JSON.parse(hit);
-      if (cached.dept === requiredDept) return cached;
+      if (tokenDeptAllows_(cached.dept, requiredDept)) return cached;
       return {ok:false,error:'This login is not allowed for this section'};
     }
   } catch(e){}
@@ -326,7 +333,7 @@ function verifyToken(token, requiredDept) {
     if (String(rows[i][0])===String(token)) {
       var tokenDept = String(rows[i][2]||'').trim().toLowerCase();
       if (now - Number(rows[i][3]) > TOKEN_TTL) return {ok:false,error:'Token expired'};
-      if (tokenDept !== requiredDept) return {ok:false,error:'This login is not allowed for this section'};
+      if (!tokenDeptAllows_(tokenDept, requiredDept)) return {ok:false,error:'This login is not allowed for this section'};
       var result = {ok:true,username:rows[i][1],dept:tokenDept,role:String(rows[i][4]||'')};
       try { cache.put(tkey, JSON.stringify(result), 300); } catch(e){}
       return result;

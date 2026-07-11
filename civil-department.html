@@ -165,15 +165,16 @@
 </div>
 <script src="config.js"></script>
 <script src="assets/empire-api.js"></script>
+<script src="assets/empire-auth.js"></script>
 <script src="assets/empire-core.js"></script>
 <div class="modal" id="imgModal" onclick="closeImg()"><img id="imgBig" style="max-width:92%;max-height:92%;border-radius:10px;"></div>
 <script>
 const IMGBB = '273d26dbc835282f5909b5f3e1fb8685';
 let allJobs = [], currentPhoto = '', uploading = false;
-function tok(){ return localStorage.getItem('civdept_token')||''; }
-function currentUser(){ return localStorage.getItem('civdept_user')||''; }
-function PERMS(){ try{ return JSON.parse(localStorage.getItem('civdept_perms')||'{}'); }catch(e){ return {}; } }
-function applyPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGlobal&&localStorage.getItem('civdept_token')) window.tsLoadGlobal();
+function tok(){ return empireGetToken(); }
+function currentUser(){ return empireGetUser(); }
+function PERMS(){ return empireGetPerms(); }
+function applyPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGlobal&&empireGetToken()) window.tsLoadGlobal();
   var p=PERMS();
   function show(id,ok){ var el=document.getElementById(id); if(el) el.style.display = ok ? '' : 'none'; }
   show('tab-add', p.add!==false);
@@ -181,26 +182,14 @@ function applyPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGlobal
   show('tab-analytics', p.analytics!==false);
   show('btnReset', p.reset===true);
   show('btnTrash', p.reset===true);
-  var wl=document.getElementById('whoLabel'); if(wl){ var u=currentUser(); var role=localStorage.getItem('civdept_role')||''; wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : ''; }
+  var wl=document.getElementById('whoLabel'); if(wl){ var u=currentUser(); var role=empireGetRole()||''; wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : ''; }
 }
-function handleLogin(e){
-  e.preventDefault();
-  var u=document.getElementById('loginUsername').value;
-  var p=document.getElementById('loginPassword').value;
-  var m=document.getElementById('loginMessage');
-  empireLogin({username:u,password:p,dept:'civil department',messageEl:m}).then(function(d){
-    localStorage.setItem('civdept_loggedIn','true');
-    localStorage.setItem('civdept_user',u);
-    localStorage.setItem('civdept_token',d.token||'');
-    localStorage.setItem('civdept_perms',JSON.stringify(d.perms||{}));
-    localStorage.setItem('civdept_role',d.role||'');
-    enterApp();
-  });
-}
-function logout(){ uiConfirm('Log out?').then(function(ok){ if(!ok)return; localStorage.removeItem('civdept_loggedIn'); localStorage.removeItem('civdept_user'); localStorage.removeItem('civdept_token'); localStorage.removeItem('civdept_perms'); localStorage.removeItem('civdept_role'); localStorage.removeItem('civdept_jobs_cache'); location.reload(); }); }
+function handleLogin(e){ empireAuthLogin(e, 'civil department', { onSuccess: function(){ enterApp(); } }); }
+function logout(){ uiConfirm('Log out?').then(function(ok){ if(!ok)return; empireAuthLogout({ extraKeys: ['civdept_jobs_cache'] }); }); }
 function enterApp(){ document.getElementById('loginPage').classList.remove('show'); document.getElementById('mainContainer').classList.add('show'); applyPerms(); refreshPerms(); document.getElementById('j-date').value=new Date().toISOString().split('T')[0]; loadJobs(); }
-function refreshPerms(){ var tk=localStorage.getItem('civdept_token'); if(!tk) return; fetchJSONRetry({action:'getPerms',token:tk}).then(function(d){ if(d&&d.ok&&d.perms){ localStorage.setItem('civdept_perms',JSON.stringify(d.perms)); if(d.role) localStorage.setItem('civdept_role',d.role); applyPerms(); } else if(d&&d.ok===false && String(d.error||'').toLowerCase().indexOf('token')!==-1){ logout(); } }).catch(function(){}); }
-window.addEventListener('load',()=>{ if(localStorage.getItem('civdept_token')){ enterApp(); } else { localStorage.removeItem('civdept_loggedIn'); document.getElementById('loginPage').classList.add('show'); } });
+function refreshPerms(){ var now=Date.now(); if(now-(_lastPermFetch||0)<300000) return; _lastPermFetch=Date.now(); empireAuthRefreshPerms(function(){ applyPerms(); }); }
+var _lastPermFetch=0;
+window.addEventListener('load',()=>{ empireAuthPageBoot({ dept: 'civil department', onEnter: enterApp }); });
 function uploadToImgbb(file,cb){ var r=new FileReader(); r.onload=e=>{ var b64=e.target.result.split(',')[1]; var fd=new FormData(); fd.append('image',b64); fd.append('key',IMGBB); fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd}).then(x=>x.json()).then(d=>{ cb(d.success&&d.data?d.data.url:null); }).catch(()=>cb(null)); }; r.readAsDataURL(file); }
 function compressImage(file,cb){ var r=new FileReader(); r.onload=e=>{ var img=new Image(); img.onload=()=>{ var c=document.createElement('canvas'); c.width=img.width*0.6; c.height=img.height*0.6; c.getContext('2d').drawImage(img,0,0,c.width,c.height); c.toBlob(b=>uploadToImgbb(b,cb),'image/jpeg',0.7); }; img.src=e.target.result; }; r.readAsDataURL(file); }
 function processPhoto(file){ if(!file)return; document.getElementById('j-imageArea').innerHTML='⏳ Uploading…'; uploading=true; compressImage(file,url=>{ uploading=false; if(url){ currentPhoto=url; document.getElementById('j-image').src=url; document.getElementById('j-image').style.display='block'; document.getElementById('j-imageArea').innerHTML='✅ Photo uploaded'; } else { document.getElementById('j-imageArea').innerHTML='❌ Upload failed, try again'; } }); }
@@ -472,7 +461,7 @@ function doReset(){ var pw=document.getElementById('resetPwInput').value; var ms
 <script>
 (function(){
   var RB_DEPT='civil department', RB_SHEETS=['CivilJobs'], RB_TOKKEY='civdept_token', RB_RELOAD='loadJobs';
-  function RBTOK(){ return localStorage.getItem(RB_TOKKEY)||''; }
+  function RBTOK(){ return empireGetToken(); }
   function rbReload(){ try{ if(typeof window[RB_RELOAD]==='function') window[RB_RELOAD](); }catch(e){} }
   window.rbOpen=function(){ document.getElementById('rbModal').style.display='flex'; window.rbLoad(); };
   window.rbClose=function(){ document.getElementById('rbModal').style.display='none'; };
@@ -594,24 +583,24 @@ function doReset(){ var pw=document.getElementById('resetPwInput').value; var ms
   window.tsReset=function(){ st=Object.assign({},DEF); save(st); apply(st); build(); };
   window.tsSaveGlobal=function(){
     var btn=document.getElementById('tsSaveAllBtn'); btn.textContent='Saving\u2026';
-    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'saveUiSettings',dept:DEPT,settings:st,token:localStorage.getItem(TKEY)||''})})
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'saveUiSettings',dept:DEPT,settings:st,token:empireGetToken()})})
       .then(function(r){return r.json();})
       .then(function(d){ btn.textContent=(d.ok||d.success)?'\u2705 Saved for everyone':'\u274c '+(d.error||d.message||'Failed'); setTimeout(function(){btn.textContent='Save for everyone';},2500); })
       .catch(function(e){ btn.textContent='\u274c '+e.message; setTimeout(function(){btn.textContent='Save for everyone';},2500); });
   };
   window.tsLoadGlobal=function(){
-    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',dept:DEPT,token:localStorage.getItem(TKEY)||''})})
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',dept:DEPT,token:empireGetToken()})})
       .then(function(r){return r.json();})
       .then(function(d){ if(d&&d.settings){ st=Object.assign({},DEF,d.settings); save(st); apply(st); build(); } })
       .catch(function(e){});
   };
   window.tsPerm=function(){
-    var role=localStorage.getItem(RKEY)||'';
+    var role=empireGetRole()||'';
     var tb=document.getElementById('txtSetBtn'); if(tb) tb.style.display=(role==='admin')?'flex':'none';
     var tp=document.getElementById('txtSetPanel'); if(tp&&role!=='admin') tp.style.display='none';
   };
   apply(st); build(); window.tsPerm();
-  if(localStorage.getItem(TKEY)) window.tsLoadGlobal();
+  if(empireGetToken()) window.tsLoadGlobal();
 })();
 </script>
 

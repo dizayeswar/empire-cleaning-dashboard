@@ -106,6 +106,7 @@
 <div class="modal" id="imgModal" onclick="closeImg()"><img id="imgBig" style="max-width:92%;max-height:92%;border-radius:10px;"></div>
 <script src="config.js"></script>
 <script src="assets/empire-api.js"></script>
+<script src="assets/empire-auth.js"></script>
 <script src="assets/empire-core.js"></script>
 <script src="assets/issue-configs.js"></script>
 <script>ISSUE_CFG=ISSUE_CONFIGS.electric;</script>
@@ -140,7 +141,7 @@
 <script>
 (function(){
   var RB_DEPT='electric issue', RB_SHEETS=['ElectricIssues'], RB_TOKKEY='elec_token', RB_RELOAD='loadIssues';
-  function RBTOK(){ return localStorage.getItem(RB_TOKKEY)||''; }
+  function RBTOK(){ return empireGetToken(); }
   function rbReload(){ try{ if(typeof window[RB_RELOAD]==='function') window[RB_RELOAD](); }catch(e){} }
   window.rbOpen=function(){ document.getElementById('rbModal').style.display='flex'; window.rbLoad(); };
   window.rbClose=function(){ document.getElementById('rbModal').style.display='none'; };
@@ -262,7 +263,7 @@
   window.tsReset=function(){ st=Object.assign({},DEF); save(st); apply(st); build(); };
   window.tsSaveGlobal=function(){
     var btn=document.getElementById('tsSaveAllBtn'); btn.textContent='Saving\u2026';
-    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'saveUiSettings',dept:DEPT,settings:st,token:localStorage.getItem(TKEY)||''})})
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'saveUiSettings',dept:DEPT,settings:st,token:empireGetToken()})})
       .then(function(r){return r.json();})
       .then(function(d){ btn.textContent=(d.ok||d.success)?'\u2705 Saved for everyone':'\u274c '+(d.error||d.message||'Failed'); setTimeout(function(){btn.textContent='Save for everyone';},2500); })
       .catch(function(e){ btn.textContent='\u274c '+e.message; setTimeout(function(){btn.textContent='Save for everyone';},2500); });
@@ -271,13 +272,13 @@
   window.tsLoadGlobal=function(){
     if(_tsGlobalLoaded) return;
     _tsGlobalLoaded=true;
-    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',dept:DEPT,token:localStorage.getItem(TKEY)||''})})
+    fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getUiSettings',dept:DEPT,token:empireGetToken()})})
       .then(function(r){return r.json();})
       .then(function(d){ if(d&&d.settings){ st=Object.assign({},DEF,d.settings); save(st); apply(st); build(); } })
       .catch(function(){ _tsGlobalLoaded=false; });
   };
   window.tsPerm=function(){
-    var role=localStorage.getItem(RKEY)||'';
+    var role=empireGetRole()||'';
     var tb=document.getElementById('txtSetBtn'); if(tb) tb.style.display=(role==='admin')?'flex':'none';
     var tp=document.getElementById('txtSetPanel'); if(tp&&role!=='admin') tp.style.display='none';
   };

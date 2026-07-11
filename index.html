@@ -19,40 +19,104 @@
             <h1>Empire World</h1>
             <p>Choose a department to open its dashboard</p>
         </header>
+        <div id="hubAuth" class="hub-auth">
+            <h2>Sign in</h2>
+            <div class="hub-auth-msg" id="hubLoginMessage"></div>
+            <form class="hub-auth-form" onsubmit="handleHubLogin(event)">
+                <input type="text" id="hubUsername" placeholder="Username" required autocomplete="username">
+                <input type="password" id="hubPassword" placeholder="Password" required autocomplete="current-password">
+                <button type="submit">Login</button>
+            </form>
+        </div>
         <div class="grid" id="grid"></div>
         <footer>Prepared by <strong>Swar Dizayee</strong></footer>
     </div>
+    <script src="config.js"></script>
+    <script src="assets/empire-api.js"></script>
+    <script src="assets/empire-auth.js"></script>
     <script src="assets/empire-core.js"></script>
     <script>
         const categories = [
-            { icon:'🧹', name:'Cleaning Department', desc:'Daily reports, task checklists & monthly report.', link:'cleaning.html', active:true },
-            { icon:'🏗️', name:'Civil Department', desc:'Daily maintenance jobs & monthly reports.', link:'civil-department.html', active:true },
-            { icon:'⛑️', name:'HSE Department', desc:'Fire safety inspections — equipment checks (okay, needs fix, missing).', link:'hse-department.html', active:true },
+            { icon:'🧹', name:'Cleaning Department', desc:'Daily reports, task checklists & monthly report.', link:'cleaning.html', active:true, accessDept:'cleaning' },
+            { icon:'🏗️', name:'Civil Department', desc:'Daily maintenance jobs & monthly reports.', link:'civil-department.html', active:true, accessDept:'civil department' },
+            { icon:'⛑️', name:'HSE Department', desc:'Fire safety inspections — equipment checks (okay, needs fix, missing).', link:'hse-department.html', active:true, accessDept:'hse' },
             { icon:'🛡️', name:'Security', desc:'Coming soon — tell us what this dashboard should track.', active:false },
             { icon:'🌿', name:'Landscaping', desc:'Coming soon — tell us what this dashboard should track.', active:false },
-            { icon:'⚡', name:'Electrical Department', desc:'Daily maintenance jobs, call center shifts & monthly reports.', link:'electrical.html', active:true },
+            { icon:'⚡', name:'Electrical Department', desc:'Daily maintenance jobs, call center shifts & monthly reports.', link:'electrical.html', active:true, accessDept:'electrical department' },
             { icon:'🚰', name:'Plumbing', desc:'Coming soon — tell us what this dashboard should track.', active:false },
             { icon:'📦', name:'Stores / Inventory', desc:'Coming soon — tell us what this dashboard should track.', active:false },
             { icon:'👥', name:'HR / Staff', desc:'Coming soon — tell us what this dashboard should track.', active:false }
         ];
+
+        function handleHubLogin(e) {
+            empireAuthLogin(e, 'all', {
+                usernameId: 'hubUsername',
+                passwordId: 'hubPassword',
+                messageEl: document.getElementById('hubLoginMessage'),
+                onSuccess: function () { renderAuthBar(); render(); }
+            });
+        }
+
+        function hubLogout() {
+            uiConfirm('Log out from all departments?').then(function (ok) {
+                if (!ok) return;
+                empireAuthLogout({ reload: true });
+            });
+        }
+
+        function renderAuthBar() {
+            var box = document.getElementById('hubAuth');
+            if (!empireGetToken()) {
+                box.className = 'hub-auth';
+                box.innerHTML = '<h2>Sign in</h2><div class="hub-auth-msg" id="hubLoginMessage"></div>' +
+                    '<form class="hub-auth-form" onsubmit="handleHubLogin(event)">' +
+                    '<input type="text" id="hubUsername" placeholder="Username" required autocomplete="username">' +
+                    '<input type="password" id="hubPassword" placeholder="Password" required autocomplete="current-password">' +
+                    '<button type="submit">Login</button></form>';
+                return;
+            }
+            var u = empireGetUser();
+            var role = empireGetRole();
+            box.className = 'hub-auth logged-in';
+            box.innerHTML = '<div class="hub-session">Logged in as <strong>' + (u || 'user') + '</strong>' +
+                (role ? (' (' + role + ')') : '') + '</div>' +
+                '<button type="button" onclick="hubLogout()">Logout</button>';
+        }
+
+        function tileLocked(c) {
+            if (!c.active || !c.accessDept || !empireGetToken()) return false;
+            return !empireCanAccessDept(c.accessDept);
+        }
+
         function render(){
+            renderAuthBar();
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             categories.forEach(c => {
+                var locked = tileLocked(c);
                 let el;
-                if (c.active && c.link) {
+                if (c.active && c.link && !locked) {
                     el = document.createElement('a');
                     el.href = c.link;
                     el.className = 'tile active';
                 } else {
                     el = document.createElement('div');
-                    el.className = 'tile soon';
-                    el.addEventListener('click', () => alert(c.name + ' is coming soon.'));
+                    el.className = 'tile' + (c.active ? (locked ? ' soon locked' : ' soon') : ' soon');
+                    el.addEventListener('click', function () {
+                        if (locked) {
+                            alert('Your account does not have access to ' + c.name + '.');
+                            return;
+                        }
+                        if (c.active && c.link) location.href = c.link;
+                        else alert(c.name + ' is coming soon.');
+                    });
                 }
+                var badge = c.active ? (locked ? 'No Access' : 'Open') : 'Coming Soon';
+                var badgeClass = locked ? 'wait' : (c.active ? 'open' : 'wait');
                 el.innerHTML = '<div class="icon">' + c.icon + '</div>' +
                     '<h2>' + c.name + '</h2>' +
                     '<p>' + c.desc + '</p>' +
-                    '<span class="badge ' + (c.active ? 'open' : 'wait') + '">' + (c.active ? 'Open' : 'Coming Soon') + '</span>';
+                    '<span class="badge ' + badgeClass + '">' + badge + '</span>';
                 grid.appendChild(el);
             });
         }

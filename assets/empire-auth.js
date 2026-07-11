@@ -83,12 +83,20 @@ function empireGetTokenDept() {
   return empireAuthLs('tokenDept');
 }
 
+function empireParseDeptList(deptStr) {
+  var s = empireNormDept(deptStr);
+  if (!s) return [];
+  if (s === 'all') return ['all'];
+  if (s.indexOf(',') === -1) return [s];
+  return s.split(',').map(function (p) { return p.trim(); }).filter(Boolean);
+}
+
 function empireCanAccessDept(requiredDept) {
-  var td = String(empireGetTokenDept() || '').trim().toLowerCase();
-  requiredDept = String(requiredDept || '').trim().toLowerCase();
   if (!empireGetToken() || !requiredDept) return false;
-  if (td === 'all') return true;
-  return td === requiredDept;
+  requiredDept = empireNormDept(requiredDept);
+  var list = empireParseDeptList(empireGetTokenDept());
+  if (list.indexOf('all') !== -1) return true;
+  return list.indexOf(requiredDept) !== -1;
 }
 
 function empireSetSession(username, data) {
@@ -136,6 +144,25 @@ function empireNormDept(dept) {
 
 function empireIsAdminSession() {
   return empireGetToken() && empireNormDept(empireGetTokenDept()) === 'all';
+}
+
+function empireIsMultiDeptSession() {
+  return empireParseDeptList(empireGetTokenDept()).length > 1;
+}
+
+function empireSingleDeptHome() {
+  var list = empireParseDeptList(empireGetTokenDept());
+  if (list.length === 1 && list[0] !== 'all') return list[0];
+  return null;
+}
+
+function empireRedirectToUserHome() {
+  var single = empireSingleDeptHome();
+  if (single) {
+    empireRedirectToDeptHome(single);
+    return;
+  }
+  if (!empireOnLoginPage()) location.replace(EMPIRE_LOGIN_PAGE);
 }
 
 function empireHomeForDept(dept) {
@@ -199,8 +226,8 @@ function empireAuthPageBoot(opts) {
     return false;
   }
 
-  if (!empireCanAccessDept(opts.dept) && !empireIsAdminSession()) {
-    empireRedirectToDeptHome(empireGetTokenDept());
+  if (!empireCanAccessDept(opts.dept)) {
+    empireRedirectToUserHome();
     return false;
   }
 

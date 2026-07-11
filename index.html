@@ -35,7 +35,7 @@
     <div id="adminView" class="wrap wide" style="display:none;">
         <header>
             <h1>Empire World</h1>
-            <p>Admin — choose a department</p>
+            <p id="hubSubtitle">Choose a department</p>
         </header>
         <div id="hubAuth" class="hub-auth logged-in"></div>
         <div class="grid" id="grid"></div>
@@ -57,10 +57,14 @@
             { icon:'🔥', name:'Fire / Mechanical Issues', desc:'Fire fighting & mechanical issues.', link:'fire-issue.html', active:true, accessDept:'fire' }
         ];
 
-        function afterLogin(d) {
-            var dept = (d && d.dept) || empireGetTokenDept();
-            if (dept && dept !== 'all') {
-                empireRedirectToDeptHome(dept);
+        function afterLogin() {
+            routeAfterLogin();
+        }
+
+        function routeAfterLogin() {
+            var single = empireSingleDeptHome();
+            if (single) {
+                empireRedirectToDeptHome(single);
                 return;
             }
             showAdminHub();
@@ -86,6 +90,8 @@
             document.getElementById('loginView').style.display = 'none';
             document.getElementById('adminView').style.display = '';
             document.body.classList.remove('login-landing');
+            var sub = document.getElementById('hubSubtitle');
+            if (sub) sub.textContent = empireIsAdminSession() ? 'Admin — choose a department' : 'Choose a department';
             renderAuthBar();
             renderGrid();
         }
@@ -100,8 +106,9 @@
             var box = document.getElementById('hubAuth');
             var u = empireGetUser();
             var role = empireGetRole();
+            var accessLabel = empireIsAdminSession() ? 'Admin access' : 'Your departments';
             box.innerHTML = '<div class="hub-session">Logged in as <strong>' + (u || 'user') + '</strong>' +
-                (role ? (' (' + role + ')') : '') + ' — Admin access</div>' +
+                (role ? (' (' + role + ')') : '') + ' — ' + accessLabel + '</div>' +
                 '<button type="button" onclick="hubLogout()">Logout</button>';
         }
 
@@ -109,6 +116,7 @@
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             categories.forEach(function (c) {
+                if (!empireCanAccessDept(c.accessDept)) return;
                 var el = document.createElement('a');
                 el.href = c.link;
                 el.className = 'tile active';
@@ -125,12 +133,7 @@
                 showLoginOnly();
                 return;
             }
-            var dept = empireGetTokenDept();
-            if (dept && dept !== 'all') {
-                empireRedirectToDeptHome(dept);
-                return;
-            }
-            showAdminHub();
+            routeAfterLogin();
         }
 
         bootIndex();

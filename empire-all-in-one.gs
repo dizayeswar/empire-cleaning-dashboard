@@ -249,11 +249,29 @@ function pruneExpiredTokens_(ss) {
     if (keep.length>0) tsheet.getRange(2,1,keep.length,5).setValues(keep);
   } catch(e) { /* never let cleanup break login */ }
 }
+function normalizeDeptField_(userDept) {
+  userDept = String(userDept || '').trim().toLowerCase();
+  if (!userDept) return '';
+  if (userDept === 'all') return 'all';
+  if (userDept.indexOf(',') === -1) return userDept;
+  return userDept.split(',').map(function (p) { return p.trim(); }).filter(Boolean).join(',');
+}
+function deptListAllows_(userDept, requestedDept) {
+  userDept = normalizeDeptField_(userDept);
+  requestedDept = String(requestedDept || '').trim().toLowerCase();
+  if (!userDept || !requestedDept) return false;
+  if (userDept === 'all') return true;
+  if (userDept === requestedDept) return true;
+  if (userDept.indexOf(',') !== -1) {
+    var parts = userDept.split(',');
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].trim() === requestedDept) return true;
+    }
+  }
+  return false;
+}
 function tokenDeptAllows_(tokenDept, requiredDept) {
-  tokenDept = String(tokenDept||'').trim().toLowerCase();
-  requiredDept = String(requiredDept||'').trim().toLowerCase();
-  if (tokenDept === 'all') return true;
-  return tokenDept === requiredDept;
+  return deptListAllows_(tokenDept, requiredDept);
 }
 function handleLogin(body) {
   var ss = getSS_();
@@ -268,14 +286,16 @@ function handleLogin(body) {
   for (var i=1;i<rows.length;i++) {
     var uname = String(rows[i][0]||'').trim().toLowerCase();
     var upass = String(rows[i][1]||'').trim();
-    var userDept = String(rows[i][2]||'').trim().toLowerCase();
+    var userDept = normalizeDeptField_(rows[i][2]);
     if (uname===username && upass===password) {
+      if (!userDept) {
+        return {ok:false,success:false,message:'Department not set for this user. Use one department, comma-separated departments, or "all" in the Users sheet.',error:'department_not_set'};
+      }
       if (!autoLogin) {
-        var allowed = (userDept===''||userDept==='all'||userDept===requestedDept);
-        if (!allowed) return {ok:false,success:false,message:'This login is not allowed for this section',error:'This login is not allowed for this section'};
+        if (!deptListAllows_(userDept, requestedDept)) return {ok:false,success:false,message:'This login is not allowed for this section',error:'This login is not allowed for this section'};
       }
       var rp = computePerms_(rows[i][3], rows[i][4]);
-      var tokenDept = (userDept===''||userDept==='all') ? 'all' : userDept;
+      var tokenDept = userDept;
       var token = Utilities.getUuid();
       var tsheet = ss.getSheetByName(TOKENS_SHEET) || ss.insertSheet(TOKENS_SHEET);
       pruneExpiredTokens_(ss);

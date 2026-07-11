@@ -18,7 +18,7 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-07-hse-conditions';
+var SCRIPT_VERSION = '2026-07-11-login-speed';
 var HSE_INSPECTOR = 'Evan Mansour';
 var HSE_ASSETKEY_COL = 17;
 var HSE_PERIOD_COL = 18;
@@ -237,17 +237,28 @@ function pruneExpiredTokens_(ss) {
   // Keeps the Tokens sheet small so verifyToken()'s scan stays fast on every API call.
   try {
     var tsheet = ss.getSheetByName(TOKENS_SHEET);
-    if (!tsheet || tsheet.getLastRow()<2) return;
+    if (!tsheet || tsheet.getLastRow() < 2) return;
     var rows = tsheet.getDataRange().getValues();
     var now = new Date().getTime();
     var keep = [];
-    for (var i=1;i<rows.length;i++) {
+    for (var i = 1; i < rows.length; i++) {
       if (now - Number(rows[i][3]) <= TOKEN_TTL) keep.push(rows[i]);
     }
-    if (keep.length === rows.length-1) return; // nothing expired, skip rewrite
-    tsheet.getRange(2,1,Math.max(tsheet.getLastRow()-1,1),5).clearContent();
-    if (keep.length>0) tsheet.getRange(2,1,keep.length,5).setValues(keep);
-  } catch(e) { /* never let cleanup break login */ }
+    if (keep.length === rows.length - 1) return;
+    var lastRow = tsheet.getLastRow();
+    if (lastRow > 1) tsheet.deleteRows(2, lastRow - 1);
+    if (keep.length > 0) tsheet.getRange(2, 1, keep.length, 5).setValues(keep);
+  } catch (e) { /* never let cleanup break login */ }
+}
+function maybePruneExpiredTokens_(ss) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var last = Number(props.getProperty('tokens_pruned_at') || 0);
+    var now = new Date().getTime();
+    if (now - last < 3600000) return;
+    props.setProperty('tokens_pruned_at', String(now));
+    pruneExpiredTokens_(ss);
+  } catch (e) {}
 }
 function normalizeDeptField_(userDept) {
   userDept = String(userDept || '').trim().toLowerCase();
@@ -298,7 +309,6 @@ function handleLogin(body) {
       var tokenDept = userDept;
       var token = Utilities.getUuid();
       var tsheet = ss.getSheetByName(TOKENS_SHEET) || ss.insertSheet(TOKENS_SHEET);
-      pruneExpiredTokens_(ss);
       tsheet.appendRow([token, username, tokenDept, new Date().getTime(), rp.role]);
       return {ok:true,success:true,token:token,username:username,dept:tokenDept,role:rp.role,perms:rp.perms,message:'Login successful'};
     }
@@ -348,6 +358,7 @@ function verifyToken(token, requiredDept) {
     }
   } catch(e){}
   var ss = getSS_();
+  maybePruneExpiredTokens_(ss);
   var tsheet = ss.getSheetByName(TOKENS_SHEET);
   if (!tsheet) return {ok:false,error:'Not authenticated'};
   var rows = tsheet.getDataRange().getValues();

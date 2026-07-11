@@ -325,6 +325,11 @@ body.login-landing .login-wrap header {
   display: none;
 }
 
+.hub-auth-msg:not(:empty),
+.hub-auth .login-message:not(:empty) {
+  display: block;
+}
+
 .hub-auth-msg.error,
 .hub-auth .login-message.error {
   display: block;

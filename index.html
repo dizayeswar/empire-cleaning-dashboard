@@ -71,11 +71,16 @@
         }
 
         function handleHubLogin(e) {
+            var btn = e && e.target && e.target.querySelector ? e.target.querySelector('button[type="submit"]') : null;
+            if (!btn && e && e.target && e.target.tagName === 'BUTTON') btn = e.target;
+            if (btn) btn.disabled = true;
             empireAuthLogin(e, 'auto', {
                 usernameId: 'hubUsername',
                 passwordId: 'hubPassword',
                 messageEl: document.getElementById('hubLoginMessage'),
                 onSuccess: afterLogin
+            }).catch(function () {
+                if (btn) btn.disabled = false;
             });
         }
 

@@ -84,6 +84,7 @@
     <script src="assets/empire-api.js"></script>
     <script src="assets/empire-auth.js?v=20260712"></script>
     <script src="assets/empire-core.js"></script>
+    <script src="assets/empire-offline-queue.js"></script>
     <script>
         /* ===== Themed dialogs (checkmark icons; shared theme/sidebar come from empire-core.js) ===== */
         (function(){
@@ -204,6 +205,9 @@
           pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !list.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
           var merged=list.slice();
           pendingPhotos.forEach(function(pp){ if(!merged.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp); });
+          taskPhotos.filter(function(x){ return x._offline; }).forEach(function(pp){
+            if(!merged.some(function(s){ return s._queueId===pp._queueId && s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp);
+          });
           if(JSON.stringify(merged)!==JSON.stringify(taskPhotos)){ taskPhotos=merged; renderTaskChecklists(); }
         }
         async function fetchTaskPhotosForMonth(mv, force){
@@ -675,6 +679,96 @@
           e.preventDefault();
           onAddPhotos(p, gi, ti, files);
         }
+        var _offlineSyncRunning=false;
+        function offlineNewId(){ return 'oq-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); }
+        function removeOfflinePlaceholdersForQueue(queueId){ taskPhotos=taskPhotos.filter(function(x){ return x._queueId!==queueId; }); }
+        function addOfflineTaskPhotoPlaceholders(queueId, p, freq, t, period, date, items){
+          items.forEach(function(it, idx){
+            taskPhotos.push({id:'offline-'+queueId+'-'+idx, project:p, freq:freq, task:t, date:date, period:period, image:it.preview||it.remote, _offline:true, _queueId:queueId});
+          });
+        }
+        async function refreshOfflineBanner(){
+          if(typeof empireOfflineQueueCount!=='function') return;
+          var n=await empireOfflineQueueCount();
+          empireOfflineSetBanner(n, function(){ syncOfflineTaskPhotos(false); });
+        }
+        async function enqueueOfflineTaskPhotos(p, freq, t, period, date, items, partialRemoteUrls, placeholderItems){
+          if(typeof empireOfflineQueuePut!=='function') throw new Error('Offline queue not available');
+          var remoteUrls=partialRemoteUrls ? partialRemoteUrls.slice() : [];
+          var imageDataUrls=[];
+          for(var i=0;i<items.length;i++){
+            if(items[i].remote) remoteUrls.push(items[i].remote);
+            else if(items[i].blob) imageDataUrls.push(await empireOfflineBlobToDataUrl(items[i].blob));
+          }
+          if(!remoteUrls.length && !imageDataUrls.length) throw new Error('No photos to save');
+          var id=offlineNewId();
+          await empireOfflineQueuePut({id:id, type:'cleaning_task_photos', createdAt:Date.now(), project:p, freq:freq, task:t, date:date, period:period, imageDataUrls:imageDataUrls, remoteUrls:remoteUrls});
+          addOfflineTaskPhotoPlaceholders(id, p, freq, t, period, date, placeholderItems||items);
+          await refreshOfflineBanner();
+          return id;
+        }
+        async function restoreOfflinePlaceholdersFromQueue(){
+          if(typeof empireOfflineQueueAll!=='function') return;
+          var rows=await empireOfflineQueueAll();
+          rows.filter(function(r){ return r.type==='cleaning_task_photos'; }).forEach(function(item){
+            if(taskPhotos.some(function(x){ return x._queueId===item.id; })) return;
+            var idx=0;
+            (item.imageDataUrls||[]).forEach(function(dataUrl){
+              taskPhotos.push({id:'offline-'+item.id+'-'+(idx++), project:item.project, freq:item.freq, task:item.task, date:item.date, period:item.period, image:dataUrl, _offline:true, _queueId:item.id});
+            });
+            (item.remoteUrls||[]).forEach(function(url){
+              taskPhotos.push({id:'offline-'+item.id+'-'+(idx++), project:item.project, freq:item.freq, task:item.task, date:item.date, period:item.period, image:url, _offline:true, _queueId:item.id});
+            });
+          });
+          renderTaskChecklists();
+          await refreshOfflineBanner();
+        }
+        async function syncOfflineTaskPhotos(silent){
+          if(_offlineSyncRunning) return;
+          if(!navigator.onLine){ if(!silent) uiAlert('No connection — photos will sync when you are back online.'); return; }
+          if(typeof empireOfflineQueueAll!=='function') return;
+          _offlineSyncRunning=true;
+          try{
+            var rows=await empireOfflineQueueAll();
+            var items=rows.filter(function(r){ return r.type==='cleaning_task_photos'; });
+            if(!items.length){ await refreshOfflineBanner(); return; }
+            var synced=0;
+            for(var qi=0;qi<items.length;qi++){
+              var item=items[qi];
+              try{
+                var remoteUrls=(item.remoteUrls||[]).slice();
+                var dataUrls=item.imageDataUrls||[];
+                for(var bi=0;bi<dataUrls.length;bi++){
+                  var blob=empireOfflineDataUrlToBlob(dataUrls[bi]);
+                  if(!blob) throw new Error('Invalid saved image');
+                  var url=await uploadToImgbbAsync(blob);
+                  if(!url) throw new Error('Photo upload failed');
+                  remoteUrls.push(url);
+                }
+                if(!remoteUrls.length) throw new Error('No photos to save');
+                var saved=[];
+                var batch=await fetchJSONRetry({action:'addTaskPhotos', project:item.project, freq:item.freq, task:item.task, date:item.date, period:item.period, images:remoteUrls, token:empireGetToken()||''}, 3);
+                if(batch && batch.ok===false && batch.error==='Unknown action'){
+                  for(var i=0;i<remoteUrls.length;i++){
+                    var row=await fetchJSONRetry({action:'addTaskPhoto', project:item.project, freq:item.freq, task:item.task, date:item.date, period:item.period, image:remoteUrls[i], token:empireGetToken()||''}, 3);
+                    if(row && row.ok===false) throw new Error(row.message||row.error||'unknown error');
+                    saved.push({id:(row&&row.id)||('tmp'+Date.now()+i), image:remoteUrls[i]});
+                  }
+                } else {
+                  if(batch && batch.ok===false) throw new Error(batch.message||batch.error||'unknown error');
+                  saved=(batch && Array.isArray(batch.items)) ? batch.items : remoteUrls.map(function(url, idx){ return { id:'tmp'+(Date.now()+idx), image:url }; });
+                }
+                removeOfflinePlaceholdersForQueue(item.id);
+                await empireOfflineQueueDelete(item.id);
+                synced++;
+              }catch(e){ console.warn('Offline sync failed for', item.id, e.message); }
+            }
+            if(synced) await loadTaskPhotos(true);
+            await refreshOfflineBanner();
+            if(synced && !silent) uiAlert('✅ '+synced+' offline photo upload'+(synced===1?'':'s')+' synced.');
+            if(synced){ refreshDashboardView(); renderTaskChecklists(); }
+          }finally{ _offlineSyncRunning=false; }
+        }
         async function confirmTaskPhoto(p, gi, ti){
           const key=taskCardKey(p, gi, ti);
           const items=pendingItems(pendingTaskUpload[key]);
@@ -685,8 +779,22 @@
           const confirmBtn=host && host.querySelector('.task-confirm-photo[data-pp="'+p+'"][data-gi="'+gi+'"][data-ti="'+ti+'"]');
           const origBtn=confirmBtn ? confirmBtn.innerHTML : '';
           if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.innerHTML=checkIconHtml('#fff')+' Saving…'; }
+          if(!navigator.onLine){
+            try{
+              await enqueueOfflineTaskPhotos(p, freq, t, period, taskTodayStr(), items);
+              revokePendingItems(pendingTaskUpload[key]);
+              delete pendingTaskUpload[key]; delete taskEditOpen[key]; taskPasteFocusKey=null;
+              renderTaskProject(p);
+              refreshDashboardView();
+              uiAlert('📴 Saved on this device. Will upload when you have signal.');
+            }catch(err){
+              uiAlert('❌ Could not save offline: '+err.message);
+            }
+            if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.innerHTML=origBtn; }
+            return;
+          }
+          const remoteUrls=[];
           try {
-            const remoteUrls=[];
             for(let i=0;i<items.length;i++){
               if(confirmBtn) confirmBtn.innerHTML=checkIconHtml('#fff')+' Uploading '+(i+1)+'/'+items.length+'…';
               let url=items[i].remote;
@@ -718,7 +826,17 @@
             renderTaskProject(p);
             refreshDashboardView();
           } catch(e){
-            uiAlert('❌ Could not save photo(s): '+e.message);
+            try{
+              var queueItems=items.slice(remoteUrls.length);
+              await enqueueOfflineTaskPhotos(p, freq, t, period, taskTodayStr(), queueItems, remoteUrls.length?remoteUrls:null, items);
+              revokePendingItems(pendingTaskUpload[key]);
+              delete pendingTaskUpload[key]; delete taskEditOpen[key]; taskPasteFocusKey=null;
+              renderTaskProject(p);
+              refreshDashboardView();
+              uiAlert('📴 Saved on this device. Will upload when connection returns.');
+            }catch(err2){
+              uiAlert('❌ Could not save photo(s): '+e.message);
+            }
             if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.innerHTML=origBtn; }
           }
         }
@@ -774,7 +892,8 @@
           if(editing || done){
             photos.forEach(x=>{
               ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" loading="lazy" decoding="async" style="height:90px;border-radius:12px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)">';
-              if(editing) ph+='<button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button>';
+              if(x._offline) ph+='<span style="position:absolute;bottom:2px;left:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;text-align:center;border-radius:0 0 10px 10px;padding:2px;">⏳ pending sync</span>';
+              if(editing && !x._offline) ph+='<button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button>';
               ph+='</span>';
             });
           }
@@ -1199,6 +1318,11 @@
               onApply:function(){ refreshDashboardView(); }
             });
             setTimeout(function(){ loadReports(); loadTasks(); loadWeekCoverage(); loadTaskPhotos(true); }, 0);
+            restoreOfflinePlaceholdersFromQueue().then(function(){ syncOfflineTaskPhotos(true); });
+            if(!window._empireOfflineOnlineBound){
+              window._empireOfflineOnlineBound=true;
+              window.addEventListener('online', function(){ syncOfflineTaskPhotos(true); });
+            }
             startSyncPolling();
             const d = new Date(); const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             userProjectList().forEach(p=>{ const di=document.getElementById(p+'-date'); if(di)di.value=today; });

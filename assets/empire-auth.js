@@ -6,6 +6,7 @@ var EMPIRE_AUTH_KEYS = {
   role: 'empire_role',
   perms: 'empire_perms',
   tokenDept: 'empire_token_dept',
+  projects: 'empire_projects',
   loggedIn: 'empire_loggedIn'
 };
 
@@ -83,6 +84,25 @@ function empireGetTokenDept() {
   return empireAuthLs('tokenDept');
 }
 
+function empireGetProjects() {
+  empireMigrateSession();
+  try {
+    var raw = empireAuthLs('projects');
+    if (!raw) return null;
+    var list = JSON.parse(raw);
+    if (!Array.isArray(list) || !list.length) return null;
+    return list;
+  } catch (e) {
+    return null;
+  }
+}
+
+function empireCanAccessProject(project) {
+  var scoped = empireGetProjects();
+  if (!scoped) return true;
+  return scoped.indexOf(String(project || '').trim().toLowerCase()) !== -1;
+}
+
 function empireParseDeptList(deptStr) {
   var s = empireNormDept(deptStr);
   if (!s) return [];
@@ -107,6 +127,7 @@ function empireSetSession(username, data) {
   empireAuthSet('role', data.role || '');
   empireAuthSet('perms', JSON.stringify(data.perms || {}));
   empireAuthSet('tokenDept', String(data.dept || data.tokenDept || '').trim().toLowerCase());
+  empireAuthSet('projects', JSON.stringify(data.projects || []));
 }
 
 function empireClearLegacyKeys() {
@@ -127,7 +148,7 @@ function empireClearSession() {
 }
 
 var EMPIRE_DEPT_HOME = {
-  cleaning: 'cleaning.html',
+  cleaning: 'cleaning-dashboard.html',
   'civil issue': 'civil-issue.html',
   fire: 'fire-issue.html',
   'electric issue': 'electric-issue.html',
@@ -245,6 +266,7 @@ function empireAuthRefreshPerms(onUpdate) {
       if (d && d.ok && d.perms) {
         empireAuthSet('perms', JSON.stringify(d.perms));
         if (d.role) empireAuthSet('role', d.role);
+        if (d.projects) empireAuthSet('projects', JSON.stringify(d.projects));
         if (typeof onUpdate === 'function') onUpdate(d);
       } else if (d && d.ok === false && String(d.error || '').toLowerCase().indexOf('token') !== -1) {
         empireAuthLogout({ reload: true });

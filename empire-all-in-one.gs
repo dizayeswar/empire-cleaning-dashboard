@@ -18,7 +18,7 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-12-cleaning-section-stats';
+var SCRIPT_VERSION = '2026-07-12-cleaning-hide-redirect';
 var HSE_INSPECTOR = 'Evan Mansour';
 var HSE_ASSETKEY_COL = 17;
 var HSE_PERIOD_COL = 18;
@@ -223,16 +223,57 @@ function computePerms_(role, hide) {
   role = String(role||'').trim().toLowerCase();
   if (role!=='admin' && role!=='viewer' && role!=='editor') role = 'editor';
   var p;
-  if (role==='admin') p = {view:true,add:true,edit:true,del:true,analytics:true,report:true,reset:true};
-  else if (role==='viewer') p = {view:true,add:false,edit:false,del:false,analytics:true,report:true,reset:false};
-  else p = {view:true,add:true,edit:true,del:true,analytics:true,report:true,reset:false};
-  var hl = String(hide||'').toLowerCase();
-  if (hl.indexOf('add')!==-1) p.add=false;
-  if (hl.indexOf('edit')!==-1) p.edit=false;
-  if (hl.indexOf('delete')!==-1 || hl.indexOf('del')!==-1) p.del=false;
-  if (hl.indexOf('analytic')!==-1) p.analytics=false;
-  if (hl.indexOf('report')!==-1) p.report=false;
+  if (role==='admin') p = {view:true,add:true,edit:true,del:true,analytics:true,report:true,dashboard:true,reset:true};
+  else if (role==='viewer') p = {view:true,add:false,edit:false,del:false,analytics:true,report:true,dashboard:true,reset:false};
+  else p = {view:true,add:true,edit:true,del:true,analytics:true,report:true,dashboard:true,reset:false};
+  var raw = String(hide||'').toLowerCase();
+  if (!raw) return {role:role, perms:p};
+  var tokens = raw.indexOf(',') === -1 ? [raw] : raw.split(',');
+  tokens.forEach(function (tok) {
+    tok = String(tok || '').trim();
+    if (!tok) return;
+    if (tok.indexOf('add') !== -1) p.add = false;
+    if (tok.indexOf('edit') !== -1) p.edit = false;
+    if (tok.indexOf('delete') !== -1 || tok.indexOf('del') !== -1) p.del = false;
+    if (tok.indexOf('analytic') !== -1) p.analytics = false;
+    if (tok.indexOf('report') !== -1 || tok.indexOf('monthly') !== -1) p.report = false;
+    if (tok.indexOf('dashboard') !== -1 || tok === 'dash') p.dashboard = false;
+  });
   return {role:role, perms:p};
+}
+function normalizeProjectsField_(raw, userDept) {
+  userDept = String(userDept || '').trim().toLowerCase();
+  if (userDept === 'all') return [];
+  raw = String(raw || '').trim().toLowerCase();
+  if (!raw || raw === 'all') return [];
+  var valid = {ec:1, es:1, wd:1, ww:1, ww2:1, ra:1};
+  if (raw.indexOf(',') === -1) return valid[raw] ? [raw] : [];
+  var out = [];
+  raw.split(',').forEach(function (p) {
+    p = p.trim();
+    if (valid[p] && out.indexOf(p) === -1) out.push(p);
+  });
+  return out;
+}
+function projectsForUserRow_(row) {
+  if (!row) return [];
+  return normalizeProjectsField_(row[5], row[2]);
+}
+function getUserRowByName_(username) {
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(USERS_SHEET);
+  if (!sheet) return null;
+  var rows = sheet.getDataRange().getValues();
+  username = String(username || '').trim().toLowerCase();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === username) return rows[i];
+  }
+  return null;
+}
+function projectAllowedForUser_(username, project) {
+  var projects = projectsForUserRow_(getUserRowByName_(username));
+  if (!projects.length) return true;
+  return projects.indexOf(String(project || '').trim().toLowerCase()) !== -1;
 }
 function pruneExpiredTokens_(ss) {
   // Keeps the Tokens sheet small so verifyToken()'s scan stays fast on every API call.
@@ -307,11 +348,12 @@ function handleLogin(body) {
         if (!deptListAllows_(userDept, requestedDept)) return {ok:false,success:false,message:'This login is not allowed for this section',error:'This login is not allowed for this section'};
       }
       var rp = computePerms_(rows[i][3], rows[i][4]);
+      var projects = projectsForUserRow_(rows[i]);
       var tokenDept = userDept;
       var token = Utilities.getUuid();
       var tsheet = ss.getSheetByName(TOKENS_SHEET) || ss.insertSheet(TOKENS_SHEET);
       tsheet.appendRow([token, username, tokenDept, new Date().getTime(), rp.role]);
-      return {ok:true,success:true,token:token,username:username,dept:tokenDept,role:rp.role,perms:rp.perms,message:'Login successful'};
+      return {ok:true,success:true,token:token,username:username,dept:tokenDept,role:rp.role,perms:rp.perms,projects:projects,message:'Login successful'};
     }
   }
   return {ok:false,success:false,message:'Invalid username or password',error:'Invalid username, password, or department'};
@@ -339,7 +381,7 @@ function handleGetPerms(body) {
   for (var j=1;j<urows.length;j++) {
     if (String(urows[j][0]||'').trim().toLowerCase()===username) {
       var rp = computePerms_(urows[j][3], urows[j][4]);
-      return {ok:true, role:rp.role, perms:rp.perms};
+      return {ok:true, role:rp.role, perms:rp.perms, projects:projectsForUserRow_(urows[j])};
     }
   }
   return {ok:false, error:'User not found'};
@@ -538,10 +580,13 @@ function handleGetSummary(body) {
 }
 
 function handleSaveReport(body) {
+  var r = body.report || {};
+  if (!projectAllowedForUser_(body.username, r.project)) {
+    return {ok:false, success:false, error:'not_allowed', message:'You do not have access to this project.'};
+  }
   var ss = getSS_();
   var sheet = ss.getSheetByName(CLEANING_SHEET) || ss.insertSheet(CLEANING_SHEET);
   if (sheet.getLastRow()===0) sheet.appendRow(['id','date','project','building','employees','level','floors','photo','createdBy','createdAt']);
-  var r = body.report || {};
   var id = r.id || ('rep-' + new Date().getTime());
   var floors = Array.isArray(r.floors) ? r.floors.join(',') : (r.floors||'');
   sheet.appendRow([id,r.date||'',r.project||'',r.building||'',r.employees||'',r.level||'',floors,r.photo||'',body.username||'',new Date().toISOString()]);
@@ -568,7 +613,10 @@ function handleGetReports(body) {
   if (!sheet||sheet.getLastRow()<2) return [];
   var rows = sheet.getDataRange().getValues();
   var reports = [];
+  var allowed = projectsForUserRow_(getUserRowByName_(body.username || ''));
   for (var i=1;i<rows.length;i++) {
+    var proj = String(rows[i][2] || '').trim().toLowerCase();
+    if (allowed.length && allowed.indexOf(proj) === -1) continue;
     reports.push({id:rows[i][0],date:fmtDate_(rows[i][1]),project:rows[i][2],building:rows[i][3],employees:rows[i][4],level:rows[i][5],floors:rows[i][6],photo:rows[i][7],createdBy:rows[i][8],createdAt:rows[i][9]});
   }
   try { var js = JSON.stringify(reports); if (js.length < 95000) cache.put(ckey, js, 60); } catch(e){}
@@ -581,7 +629,12 @@ function handleDeleteReport(body) {
   if (!sheet) return {ok:false,error:'Sheet not found'};
   var rows = sheet.getDataRange().getValues();
   for (var i=1;i<rows.length;i++) {
-    if (String(rows[i][0])===String(body.id)) { trashRows_(CLEANING_SHEET,[rows[i]],'delete',body.username); sheet.deleteRow(i+1); invalidateReportsCache_(); return {ok:true,success:true}; }
+    if (String(rows[i][0])===String(body.id)) {
+      if (!projectAllowedForUser_(body.username, rows[i][2])) {
+        return {ok:false, error:'not_allowed', message:'You do not have access to this project.'};
+      }
+      trashRows_(CLEANING_SHEET,[rows[i]],'delete',body.username); sheet.deleteRow(i+1); invalidateReportsCache_(); return {ok:true,success:true};
+    }
   }
   return {ok:false,error:'Report not found'};
 }

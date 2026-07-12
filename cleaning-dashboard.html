@@ -15,7 +15,7 @@
         <div class="login-box">
             <button class="theme-btn login-theme" onclick="toggleTheme()" aria-label="Toggle dark or light mode" title="Toggle dark or light mode"><span class="nav-icon theme-icon"></span></button>
             <img src="logo-light.png" alt="Empire World" style="height:44px;width:auto;display:block;margin:0 auto 16px;">
-            <a href="cleaning.html" style="display:block;text-align:left;margin-bottom:18px;color:var(--header-accent);text-decoration:none;font-size:13px;font-weight:600;">← Back to categories</a><h1>Empire World</h1>
+            <a href="cleaning.html" id="loginBackLink" style="display:block;text-align:left;margin-bottom:18px;color:var(--header-accent);text-decoration:none;font-size:13px;font-weight:600;">← Back to categories</a><h1>Empire World</h1>
             <div class="login-message" id="loginMessage"></div>
             <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
                 <input type="text" id="loginUsername" placeholder="Username" required>
@@ -41,16 +41,16 @@
             <button class="tab-btn" onclick="switchTab(event, 'analytics')" title="Analytics"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 11h8"/><path d="M7 16h12"/><path d="M7 6h3"/></svg></span> <span class="lbl">Analytics</span></button>
             <button class="tab-btn" onclick="switchTab(event, 'monthly')" title="Monthly Report"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> <span class="lbl">Monthly Report</span></button>
             <div class="side-nav-label lbl">Projects</div>
-            <button class="tab-btn" onclick="switchTab(event, 'empire-complex')" title="Empire Complex"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Empire Complex</span></button>
-            <button class="tab-btn" onclick="switchTab(event, 'empire-square')" title="Empire Square"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Empire Square</span></button>
-            <button class="tab-btn" onclick="switchTab(event, 'west-diamond')" title="West Diamond"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">West Diamond</span></button>
-            <button class="tab-btn" onclick="switchTab(event, 'west-wing')" title="West Wing"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">West Wing</span></button>
-            <button class="tab-btn" onclick="switchTab(event, 'new-west-wing')" title="(New) West Wing"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">(New) West Wing</span></button>
-            <button class="tab-btn" onclick="switchTab(event, 'royal-apartment')" title="Royal Apartment"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Royal Apartment</span></button>
+            <button class="tab-btn" data-cleaning-proj="ec" onclick="switchTab(event, 'empire-complex')" title="Empire Complex"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Empire Complex</span></button>
+            <button class="tab-btn" data-cleaning-proj="es" onclick="switchTab(event, 'empire-square')" title="Empire Square"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Empire Square</span></button>
+            <button class="tab-btn" data-cleaning-proj="wd" onclick="switchTab(event, 'west-diamond')" title="West Diamond"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">West Diamond</span></button>
+            <button class="tab-btn" data-cleaning-proj="ww" onclick="switchTab(event, 'west-wing')" title="West Wing"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">West Wing</span></button>
+            <button class="tab-btn" data-cleaning-proj="ww2" onclick="switchTab(event, 'new-west-wing')" title="(New) West Wing"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">(New) West Wing</span></button>
+            <button class="tab-btn" data-cleaning-proj="ra" onclick="switchTab(event, 'royal-apartment')" title="Royal Apartment"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg></span> <span class="lbl">Royal Apartment</span></button>
           </nav>
           <div class="side-actions">
             <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark or light mode" title="Toggle dark or light mode"><span class="nav-icon theme-icon"></span> <span class="lbl">Theme</span></button>
-            <button onclick="location.href='cleaning.html'" title="Categories"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span> <span class="lbl">Categories</span></button>
+            <button id="btnCategories" onclick="location.href='cleaning.html'" title="Categories"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span> <span class="lbl">Categories</span></button>
             <button id="btnTrash" onclick="rbOpen()" style="color:#fff;background:#1d9e75;border-color:#1d9e75;" title="Recycle Bin"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="m14 16-3 3 3 3"/><path d="M8.293 13.596 7.196 9.5 3.1 10.598"/><path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/><path d="m13.378 9.633 4.096 1.098 1.097-4.096"/></svg></span> <span class="lbl">Recycle Bin</span></button>
             <button id="btnReset" onclick="resetAllData()" style="color:#fff;background:#C5504F;border-color:#C5504F;" title="Reset Data"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H3"/><path d="M7 12H3"/><path d="M7 19H3"/><path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"/><path d="M11 10v4h4"/></svg></span> <span class="lbl">Reset Data</span></button>
             <button id="logoutBtn" onclick="logout()" title="Logout"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg></span> <span class="lbl">Logout</span></button>
@@ -89,6 +89,34 @@
           window.alert=function(m){ window.uiAlert(m); };
         })();
         const supervisors = {ec:'Ibrahim',es:'Ibrahim',wd:'Rawa',ww:'Emad',ww2:'Muhamad',ra:'Rawa'};
+        const ALL_CLEANING_PROJECTS = ['ec','es','wd','ww','ww2','ra'];
+        const PROJECT_TAB_MAP = {ec:'empire-complex',es:'empire-square',wd:'west-diamond',ww:'west-wing',ww2:'new-west-wing',ra:'royal-apartment'};
+        function userProjectList() {
+          var scoped = empireGetProjects();
+          if (!scoped) return ALL_CLEANING_PROJECTS.slice();
+          return ALL_CLEANING_PROJECTS.filter(function (p) { return scoped.indexOf(p) !== -1; });
+        }
+        function reportsForUser(list) {
+          var allowed = userProjectList();
+          if (allowed.length === ALL_CLEANING_PROJECTS.length) return list;
+          return list.filter(function (r) { return allowed.indexOf(r.project) !== -1; });
+        }
+        function applyCleaningProjectScope() {
+          var allowed = userProjectList();
+          var allAccess = allowed.length === ALL_CLEANING_PROJECTS.length;
+          document.querySelectorAll('[data-cleaning-proj]').forEach(function (btn) {
+            var p = btn.getAttribute('data-cleaning-proj');
+            btn.style.display = (allAccess || allowed.indexOf(p) !== -1) ? '' : 'none';
+          });
+          ALL_CLEANING_PROJECTS.forEach(function (p) {
+            var tabId = PROJECT_TAB_MAP[p];
+            var panel = document.getElementById(tabId);
+            if (panel) panel.style.display = (allAccess || allowed.indexOf(p) !== -1) ? '' : 'none';
+          });
+          if (filterProject !== 'ALL' && allowed.indexOf(filterProject) === -1) filterProject = 'ALL';
+          buildProjectFilterBoxes();
+          if (!allAccess && allowed.length === 1) switchTabToProject(PROJECT_TAB_MAP[allowed[0]]);
+        }
         const buildingInfo = {ec:{count:6,buildings:'EC1-EC6',avgFloors:'5-6'},es:{count:5,buildings:'ES1-ES6',avgFloors:'23-28'},wd:{count:3,buildings:'WD-A, WD-B, WD-C',avgFloors:'25-27'},ww:{count:11,buildings:'WW1-WW11',avgFloors:'10-26'},ww2:{count:4,buildings:'WW12-WW15',avgFloors:'32'},ra:{count:32,buildings:'RA-A1-A12, RA-B1-B12, RA-C1-C8',avgFloors:'11-14'}};
         const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>';
         function checkIconHtml(color){ return '<span class="nav-icon" style="color:'+(color||'#27ae60')+';">'+CHECK_ICON+'</span>'; }
@@ -150,7 +178,45 @@
           }
           throw lastErr || new Error('Request failed');
         }
-        async function loadReports() { const cached=readReportsCache(); if(cached){ allReports=cached; refreshDashboardView(); } var lastErr=null; for(var attempt=0; attempt<3; attempt++){ try { const response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'getReports', token:empireGetToken()||''})}); if(!response.ok) throw new Error('Failed to fetch: ' + response.status); const data = await response.json(); if(Array.isArray(data)) { data.forEach(r=>{ r.image = r.photo; }); allReports = data; writeReportsCache(data); refreshDashboardView(); updateDebugStatus('✅ Loaded '+allReports.length+' report(s) from the server just now.'); } else if(data && data.ok===false) { updateDebugStatus('⚠️ Server rejected the request: '+(data.message||data.error||'unknown reason')); logout(); } else { updateDebugStatus('⚠️ Server responded but not with a list. Click "Test Now" above to see the raw reply.'); } return; } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 400); }); } } console.error('Load error:', lastErr && lastErr.message); updateDebugStatus('❌ Could not reach the server: '+(lastErr && lastErr.message)); }
+        function readReportsCache(){ try{ var s=localStorage.getItem('cleaning_reports_cache'); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
+        function writeReportsCache(a){ try{ localStorage.setItem('cleaning_reports_cache', JSON.stringify(a)); }catch(e){} }
+        function readTasksCache(){ try{ var s=localStorage.getItem('cleaning_tasks_cache'); if(!s) return null; var o=JSON.parse(s); return (o&&typeof o==='object'&&!Array.isArray(o))?o:null; }catch(e){ return null; } }
+        function writeTasksCache(o){ try{ localStorage.setItem('cleaning_tasks_cache', JSON.stringify(o)); }catch(e){} }
+        function readWeekCovCache(){ try{ var s=localStorage.getItem('cleaning_weekcov_cache'); if(!s) return null; var o=JSON.parse(s); return (o&&typeof o==='object'&&!Array.isArray(o))?o:null; }catch(e){ return null; } }
+        function writeWeekCovCache(o){ try{ localStorage.setItem('cleaning_weekcov_cache', JSON.stringify(o)); }catch(e){} }
+        function readTaskPhotosCache(mv){ try{ var s=localStorage.getItem('cleaning_tphotos_'+mv); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
+        function writeTaskPhotosCache(mv,a){ try{ localStorage.setItem('cleaning_tphotos_'+mv, JSON.stringify(a)); }catch(e){} }
+        var _photosByMonth={};
+        var _photosFetchPromises={};
+        function normProjectCode(v){ return String(v||'').trim().toLowerCase(); }
+        function photoMatchesProject(x, p){ return normProjectCode(x.project)===normProjectCode(p); }
+        function applyTaskPhotosList(list, mv){
+          mv=mv||curMonth();
+          if(!Array.isArray(list)) return;
+          _photosByMonth[mv]=list;
+          writeTaskPhotosCache(mv, list);
+          pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !list.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
+          var merged=list.slice();
+          pendingPhotos.forEach(function(pp){ if(!merged.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp); });
+          if(JSON.stringify(merged)!==JSON.stringify(taskPhotos)){ taskPhotos=merged; renderTaskChecklists(); }
+        }
+        async function fetchTaskPhotosForMonth(mv, force){
+          if(!force && _photosByMonth[mv] && _photosByMonth[mv].length) return _photosByMonth[mv];
+          if(!force && _photosFetchPromises[mv]) return _photosFetchPromises[mv];
+          var cached=readTaskPhotosCache(mv);
+          if(cached && cached.length && !force){ _photosByMonth[mv]=cached; return cached; }
+          _photosFetchPromises[mv]=(async function(){
+            try{
+              const r=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:mv, token:empireGetToken()||''})});
+              const d=await r.json();
+              if(d && d.ok===false){ logout(); return []; }
+              if(Array.isArray(d)){ _photosByMonth[mv]=d; writeTaskPhotosCache(mv,d); return d; }
+            }catch(e){ console.error('Task photo fetch error:', e.message); }
+            return _photosByMonth[mv]||(cached&&cached.length?cached:[]);
+          })();
+          try { return await _photosFetchPromises[mv]; } finally { delete _photosFetchPromises[mv]; }
+        }
+        async function loadReports() { const cached=readReportsCache(); if(cached){ allReports=reportsForUser(cached); refreshDashboardView(); } var lastErr=null; for(var attempt=0; attempt<3; attempt++){ try { const response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'getReports', token:empireGetToken()||''})}); if(!response.ok) throw new Error('Failed to fetch: ' + response.status); const data = await response.json(); if(Array.isArray(data)) { data.forEach(r=>{ r.image = r.photo; }); allReports = reportsForUser(data); writeReportsCache(allReports); refreshDashboardView(); updateDebugStatus('✅ Loaded '+allReports.length+' report(s) from the server just now.'); } else if(data && data.ok===false) { updateDebugStatus('⚠️ Server rejected the request: '+(data.message||data.error||'unknown reason')); logout(); } else { updateDebugStatus('⚠️ Server responded but not with a list. Click "Test Now" above to see the raw reply.'); } return; } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 400); }); } } console.error('Load error:', lastErr && lastErr.message); updateDebugStatus('❌ Could not reach the server: '+(lastErr && lastErr.message)); }
         function updateDebugStatus(msg){ var el=document.getElementById('debugStatus'); if(el) el.textContent=msg; }
         async function debugTestReports(){
           updateDebugStatus('⏳ Testing…');
@@ -226,10 +292,14 @@
             } catch(e){ uiAlert('❌ Error: '+e.message); }
           });
         }
-        function saveReport(p) { if(uploading[p]) { alert('⏳ Image still uploading! Please wait for "✅ Image uploaded!" message.'); return; } const b=document.getElementById(p+'-building').value; const d=document.getElementById(p+'-date').value||new Date().toISOString().split('T')[0]; const e=document.getElementById(p+'-employees').value; const l=document.getElementById(p+'-level').value; const img=currentImages[p]||''; const f=[]; document.querySelectorAll('#'+p+'-floors input[type="checkbox"]:checked').forEach(cb=>f.push(cb.value)); const id='rep-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); const rep={action:'saveReport', report:{id:id,project:p,building:b,date:d,employees:e,level:l,floors:f,photo:img}, token:empireGetToken()||''}; fetchJSONRetry(rep).then(d2=>{ if(d2 && d2.ok===false){ alert('❌ Report NOT saved: '+(d2.message||d2.error||'unknown error')); return; } alert('✅ Report saved!'); loadReports().then(()=>{ refreshDashboardView(); }); clearForm(p); }).catch(err=>{alert('❌ Error: '+err.message); console.error(err);}); }
+        function saveReport(p) { if(!empireCanAccessProject(p)){ alert('You do not have access to this project.'); return; } if(uploading[p]) { alert('⏳ Image still uploading! Please wait for "✅ Image uploaded!" message.'); return; } const b=document.getElementById(p+'-building').value; const d=document.getElementById(p+'-date').value||new Date().toISOString().split('T')[0]; const e=document.getElementById(p+'-employees').value; const l=document.getElementById(p+'-level').value; const img=currentImages[p]||''; const f=[]; document.querySelectorAll('#'+p+'-floors input[type="checkbox"]:checked').forEach(cb=>f.push(cb.value)); const id='rep-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); const rep={action:'saveReport', report:{id:id,project:p,building:b,date:d,employees:e,level:l,floors:f,photo:img}, token:empireGetToken()||''}; fetchJSONRetry(rep).then(d2=>{ if(d2 && d2.ok===false){ alert('❌ Report NOT saved: '+(d2.message||d2.error||'unknown error')); return; } alert('✅ Report saved!'); loadReports().then(()=>{ refreshDashboardView(); }); clearForm(p); }).catch(err=>{alert('❌ Error: '+err.message); console.error(err);}); }
         function clearForm(p) { document.getElementById(p+'-date').value=''; document.getElementById(p+'-employees').value='1'; document.getElementById(p+'-level').value='High'; document.querySelectorAll('#'+p+'-floors input[type="checkbox"]').forEach(cb=>{cb.checked=false; updateCbIcon(cb);}); const sa=document.getElementById(p+'-selectall'); sa.checked=false; updateCbIcon(sa); const img=document.getElementById(p+'-image'); img.src=''; img.style.display='none'; currentImages[p]=''; }
         function projectKeyFromTab(tabId){ return Object.keys(taskMap).find(function(k){ return taskMap[k].tab===tabId; }) || null; }
         function switchTab(e,t) {
+          if (!['all','analytics','monthly'].includes(t)) {
+            var projGuard = projectKeyFromTab(t);
+            if (projGuard && !empireCanAccessProject(projGuard)) return;
+          }
           document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
           document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
           var panel=document.getElementById(t); if(panel) panel.classList.add('active');
@@ -245,14 +315,18 @@
           else if(t==='monthly'){ const mm=document.getElementById('monthlyMonth'); if(mm && !mm.value){ mm.value=curMonth(); } }
           else if(!['all','analytics','monthly'].includes(t)){
             var proj=projectKeyFromTab(t);
-            if(proj){ updateFloors(proj); renderTaskProject(proj); }
+            if(proj){
+              loadTaskPhotos(true);
+              updateFloors(proj);
+              renderTaskProject(proj);
+            }
             loadTasks();
           }
         }
         let filterProject = 'ALL';
         function buildProjectFilterBoxes(){
           const host=document.getElementById('projectFilterBoxes'); if(!host) return;
-          const list=[['ALL','All Projects']].concat(['ec','es','wd','ww','ww2','ra'].map(p=>[p, projName(p)]));
+          const list=[['ALL','All Projects']].concat(userProjectList().map(p=>[p, projName(p)]));
           host.innerHTML = list.map(function(pair){
             const p=pair[0], label=pair[1];
             const sel = (filterProject===p);
@@ -285,7 +359,7 @@
         }
         function dashPhotosFor(p, g, task, mv, wk, tphotosAll){
           var per=g.daily?(mv+'#'+wk):mv;
-          return tphotosAll.filter(function(x){ return x.project===p && x.task===task && x.period===per; });
+          return tphotosAll.filter(function(x){ return photoMatchesProject(x, p) && x.task===task && x.period===per; });
         }
         function dashWeekComplete(p, wk, mv, tphotosAll){
           var dg=dailyGroupOf(p);
@@ -327,7 +401,7 @@
           if(filterProject!=='ALL') filt=filt.filter(r=>r.project===filterProject);
           let h='<h2><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> Task Checklist — '+d+' — '+projName(filterProject)+'</h2>';
           h+='<p style="color:var(--text-soft);font-size:13px;margin:-8px 0 16px;">Report month: <strong>'+mv+'</strong> · '+checkIconHtml()+' = photo uploaded · '+squareIconHtml()+' = still needed</p>';
-          ['ec','es','wd','ww','ww2','ra'].forEach(function(p){
+          userProjectList().forEach(function(p){
             if(filterProject!=='ALL' && p!==filterProject) return;
             const preps=filt.filter(r=>r.project===p);
             var dg=dailyGroupOf(p);
@@ -345,6 +419,10 @@
           document.getElementById('dashboardContent').innerHTML=h;
         }
         function switchTabToProject(tabId){
+          if (!['all','analytics','monthly'].includes(tabId)) {
+            var projGuard = projectKeyFromTab(tabId);
+            if (projGuard && !empireCanAccessProject(projGuard)) return;
+          }
           document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
           document.querySelectorAll('.tab-btn').forEach(function(el){ el.classList.remove('active'); });
           var tab=document.getElementById(tabId); if(tab) tab.classList.add('active');
@@ -354,7 +432,11 @@
           });
           if(tabId && !['all','analytics','monthly'].includes(tabId)){
             var proj=projectKeyFromTab(tabId);
-            if(proj){ updateFloors(proj); renderTaskProject(proj); }
+            if(proj){
+              loadTaskPhotos(true);
+              updateFloors(proj);
+              renderTaskProject(proj);
+            }
             loadTasks();
           }
         }
@@ -384,7 +466,7 @@
           } catch(e){ console.error('Month completion fetch error:', e.message); }
           const monthName=new Date(mv+'-01T00:00:00').toLocaleString('en-US',{month:'long',year:'numeric'});
           let h='<h2>'+chartIconHtml()+' Monthly Completion — '+monthName+'</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:16px;">';
-          ['ec','es','wd','ww','ww2','ra'].forEach(function(p){
+          userProjectList().forEach(function(p){
             const cfg=taskMap[p];
             const dg=cfg.groups.find(function(g){ return g.daily; });
             const ndg=cfg.groups.filter(function(g){ return !g.daily; });
@@ -408,9 +490,9 @@
           h+='</div>';
           host.innerHTML=h;
         }
-        function generateAnalytics() { const fromDate=document.getElementById('analyticsFromDate').value; const toDate=document.getElementById('analyticsToDate').value; if(!fromDate || !toDate) return; const filtered=allReports.filter(r=>{const rd=normalizeDate(r.date); return rd>=fromDate && rd<=toDate;}); analyticsReports=filtered; let h='<h2>'+summaryIconHtml()+' Summary ('+fromDate+' to '+toDate+')</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+filtered.length+'</div><div class="stat-label">Total Reports</div></div>'; const imgs=filtered.filter(r=>r.image&&r.image.length>0).length; h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(filtered.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+filtered.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">'+chartIconHtml()+' By Project</h3>'; ['ec','es','wd','ww','ww2','ra'].forEach(p=>{const pr=filtered.filter(r=>r.project===p); const pi=pr.filter(r=>r.image&&r.image.length>0).length; const bi=new Set(pr.map(r=>r.building)).size; const te=pr.reduce((s,r)=>s+parseInt(r.employees),0); const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0); h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>';}); document.getElementById('analyticsContent').innerHTML=h; attachStatHandlers('analyticsContent'); }
-        function generateAllTimeAnalytics() { analyticsReports=allReports; let h='<h2>'+summaryIconHtml()+' All-Time Summary (All Data)</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+allReports.length+'</div><div class="stat-label">Total Reports</div></div>'; const imgs=allReports.filter(r=>r.image&&r.image.length>0).length; h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(allReports.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+allReports.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">'+chartIconHtml()+' By Project</h3>'; ['ec','es','wd','ww','ww2','ra'].forEach(p=>{const pr=allReports.filter(r=>r.project===p); const pi=pr.filter(r=>r.image&&r.image.length>0).length; const bi=new Set(pr.map(r=>r.building)).size; const te=pr.reduce((s,r)=>s+parseInt(r.employees),0); const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0); h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>';}); document.getElementById('analyticsContent').innerHTML=h; attachStatHandlers('analyticsContent'); }
-        function downloadAnalyticsReport() { const dashHTML=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Empire World Dashboard - Analytics Report</title><style>* { margin: 0; padding: 0; box-sizing: border-box; }body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f5a9e 0%, #8d015d 100%); color: #fff; min-height: 100vh; padding-bottom: 40px; }.container { max-width: 1400px; margin: 0 auto; padding: 20px; }header { background: #0d4a85; padding: 20px; border-radius: 0 0 24px 24px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-bottom: 3px solid #a0327d; }.header-top { display: flex; justify-content: space-between; align-items: center; }.header-title h1 { font-size: 28px; margin-bottom: 5px; color: #fff; }.header-title p { font-size: 13px; color: #ccc; }.form-section { background: rgba(13,50,100,0.6); padding: 25px; border-radius: 18px; margin-bottom: 25px; border: 2px solid #a0327d; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }h2 { margin-bottom: 20px; font-size: 20px; color: #fff; }h3 { margin-top: 25px; margin-bottom: 15px; font-size: 16px; color: #ccc; }.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }.stat-box { background: rgba(13,50,100,0.8); padding: 15px; border-radius: 16px; text-align: center; border: 2px solid #a0327d; }.stat-value { font-size: 24px; font-weight: bold; color: #a0327d; }.stat-label { font-size: 12px; color: #ccc; margin-top: 5px; }p { color: #fff; }img { max-width: 150px; margin-top: 10px; border-radius: 12px; margin-right: 15px; }</style></head><body><div class="container"><header><div class="header-top"><div class="header-title"><h1>Empire World Dashboard</h1><p>Analytics Report - Downloaded on ${new Date().toLocaleString()}</p></div></div></header><div id="analyticsContent"></div></div><script>const supervisors = {ec:'Ibrahim',es:'Ibrahim',wd:'Rawa',ww:'Emad',ww2:'Muhamad',ra:'Rawa'};const buildingInfo = {ec:{count:6,buildings:'EC1-EC6',avgFloors:'5-6'},es:{count:5,buildings:'ES1-ES6',avgFloors:'23-28'},wd:{count:3,buildings:'WD-A, WD-B, WD-C',avgFloors:'25-27'},ww:{count:11,buildings:'WW1-WW11',avgFloors:'10-26'},ww2:{count:4,buildings:'WW12-WW15',avgFloors:'32'},ra:{count:32,buildings:'RA-A1-A12, RA-B1-B12, RA-C1-C8',avgFloors:'11-14'}};function normalizeFloors(f){if(Array.isArray(f))return f;if(typeof f==='string')return f.split(',').map(s=>s.trim()).filter(s=>s.length);return [];}const reps = ${JSON.stringify(allReports)};let h='<h2>📋 Summary</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+reps.length+'</div><div class="stat-label">Total Reports</div></div>';const imgs=reps.filter(r=>r.image&&r.image.length>0).length;h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(reps.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+reps.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">📊 By Project</h3>';['ec','es','wd','ww','ww2','ra'].forEach(p=>{const pr=reps.filter(r=>r.project===p);const pi=pr.filter(r=>r.image&&r.image.length>0).length;const bi=new Set(pr.map(r=>r.building)).size;const te=pr.reduce((s,r)=>s+parseInt(r.employees),0);const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0);h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>'});document.getElementById('analyticsContent').innerHTML=h;<\/script></body></html>`; const blob=new Blob([dashHTML],{type:'text/html'}); const url=window.URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='empire_dashboard_analytics_'+new Date().toISOString().split('T')[0]+'.html'; a.click(); }
+        function generateAnalytics() { const fromDate=document.getElementById('analyticsFromDate').value; const toDate=document.getElementById('analyticsToDate').value; if(!fromDate || !toDate) return; const filtered=allReports.filter(r=>{const rd=normalizeDate(r.date); return rd>=fromDate && rd<=toDate;}); analyticsReports=filtered; let h='<h2>'+summaryIconHtml()+' Summary ('+fromDate+' to '+toDate+')</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+filtered.length+'</div><div class="stat-label">Total Reports</div></div>'; const imgs=filtered.filter(r=>r.image&&r.image.length>0).length; h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(filtered.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+filtered.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">'+chartIconHtml()+' By Project</h3>'; userProjectList().forEach(p=>{const pr=filtered.filter(r=>r.project===p); const pi=pr.filter(r=>r.image&&r.image.length>0).length; const bi=new Set(pr.map(r=>r.building)).size; const te=pr.reduce((s,r)=>s+parseInt(r.employees),0); const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0); h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>';}); document.getElementById('analyticsContent').innerHTML=h; attachStatHandlers('analyticsContent'); }
+        function generateAllTimeAnalytics() { analyticsReports=allReports; let h='<h2>'+summaryIconHtml()+' All-Time Summary (All Data)</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+allReports.length+'</div><div class="stat-label">Total Reports</div></div>'; const imgs=allReports.filter(r=>r.image&&r.image.length>0).length; h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(allReports.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+allReports.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">'+chartIconHtml()+' By Project</h3>'; userProjectList().forEach(p=>{const pr=allReports.filter(r=>r.project===p); const pi=pr.filter(r=>r.image&&r.image.length>0).length; const bi=new Set(pr.map(r=>r.building)).size; const te=pr.reduce((s,r)=>s+parseInt(r.employees),0); const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0); h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>';}); document.getElementById('analyticsContent').innerHTML=h; attachStatHandlers('analyticsContent'); }
+        function downloadAnalyticsReport() { const dashHTML=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Empire World Dashboard - Analytics Report</title><style>* { margin: 0; padding: 0; box-sizing: border-box; }body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f5a9e 0%, #8d015d 100%); color: #fff; min-height: 100vh; padding-bottom: 40px; }.container { max-width: 1400px; margin: 0 auto; padding: 20px; }header { background: #0d4a85; padding: 20px; border-radius: 0 0 24px 24px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-bottom: 3px solid #a0327d; }.header-top { display: flex; justify-content: space-between; align-items: center; }.header-title h1 { font-size: 28px; margin-bottom: 5px; color: #fff; }.header-title p { font-size: 13px; color: #ccc; }.form-section { background: rgba(13,50,100,0.6); padding: 25px; border-radius: 18px; margin-bottom: 25px; border: 2px solid #a0327d; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }h2 { margin-bottom: 20px; font-size: 20px; color: #fff; }h3 { margin-top: 25px; margin-bottom: 15px; font-size: 16px; color: #ccc; }.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }.stat-box { background: rgba(13,50,100,0.8); padding: 15px; border-radius: 16px; text-align: center; border: 2px solid #a0327d; }.stat-value { font-size: 24px; font-weight: bold; color: #a0327d; }.stat-label { font-size: 12px; color: #ccc; margin-top: 5px; }p { color: #fff; }img { max-width: 150px; margin-top: 10px; border-radius: 12px; margin-right: 15px; }</style></head><body><div class="container"><header><div class="header-top"><div class="header-title"><h1>Empire World Dashboard</h1><p>Analytics Report - Downloaded on ${new Date().toLocaleString()}</p></div></div></header><div id="analyticsContent"></div></div><script>const supervisors = {ec:'Ibrahim',es:'Ibrahim',wd:'Rawa',ww:'Emad',ww2:'Muhamad',ra:'Rawa'};const buildingInfo = {ec:{count:6,buildings:'EC1-EC6',avgFloors:'5-6'},es:{count:5,buildings:'ES1-ES6',avgFloors:'23-28'},wd:{count:3,buildings:'WD-A, WD-B, WD-C',avgFloors:'25-27'},ww:{count:11,buildings:'WW1-WW11',avgFloors:'10-26'},ww2:{count:4,buildings:'WW12-WW15',avgFloors:'32'},ra:{count:32,buildings:'RA-A1-A12, RA-B1-B12, RA-C1-C8',avgFloors:'11-14'}};function normalizeFloors(f){if(Array.isArray(f))return f;if(typeof f==='string')return f.split(',').map(s=>s.trim()).filter(s=>s.length);return [];}const projects = ${JSON.stringify(userProjectList())};const reps = ${JSON.stringify(allReports)};let h='<h2>📋 Summary</h2><div class="stats"><div class="stat-box"><div class="stat-value">'+reps.length+'</div><div class="stat-label">Total Reports</div></div>';const imgs=reps.filter(r=>r.image&&r.image.length>0).length;h+='<div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(reps.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+reps.reduce((s,r)=>s+parseInt(r.employees),0)+'</div><div class="stat-label">Employees</div></div></div><h3 style="margin-top:30px;">📊 By Project</h3>';projects.forEach(p=>{const pr=reps.filter(r=>r.project===p);const pi=pr.filter(r=>r.image&&r.image.length>0).length;const bi=new Set(pr.map(r=>r.building)).size;const te=pr.reduce((s,r)=>s+parseInt(r.employees),0);const tf=pr.reduce((s,r)=>s+normalizeFloors(r.floors).length,0);h+='<div class="form-section"><h3>'+{ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]+'</h3><div class="stats"><div class="stat-box"><div class="stat-value">'+pr.length+'</div><div class="stat-label">Reports</div></div><div class="stat-box"><div class="stat-value">'+pi+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+bi+'/'+buildingInfo[p].count+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+tf+'</div><div class="stat-label">Floors</div></div><div class="stat-box"><div class="stat-value">'+te+'</div><div class="stat-label">Employees</div></div></div><p><strong>Supervisor:</strong> '+supervisors[p]+'</p><p><strong>Buildings:</strong> '+buildingInfo[p].buildings+'</p><p><strong>Floors:</strong> '+buildingInfo[p].avgFloors+'</p></div>'});document.getElementById('analyticsContent').innerHTML=h;<\/script></body></html>`; const blob=new Blob([dashHTML],{type:'text/html'}); const url=window.URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='empire_dashboard_analytics_'+new Date().toISOString().split('T')[0]+'.html'; a.click(); }
         function resetAllData(){ var i=document.getElementById('resetPwInput'); if(i)i.value=''; var m=document.getElementById('resetMsg'); if(m)m.textContent=''; document.getElementById('resetModal').classList.add('show'); if(i) setTimeout(function(){ i.focus(); },50); }
         function closeResetModal(){ document.getElementById('resetModal').classList.remove('show'); }
         function doReset(){ var pw=document.getElementById('resetPwInput').value; var msg=document.getElementById('resetMsg'); msg.style.color='var(--c-error)'; msg.textContent='Deleting…'; fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearAll', resetPassword:pw, token:empireGetToken()||''})}).then(r=>r.json()).then(d=>{ if(d && d.error==='bad_password'){ msg.style.color='var(--c-error)'; msg.textContent='❌ Wrong password — nothing was deleted.'; return; } allReports=[]; writeReportsCache([]); taskPhotos=[]; weekCov={}; taskState={}; taskEditOpen={}; pendingTaskUpload={}; renderTaskChecklists(); var dc=document.getElementById('dashboardContent'); if(dc) dc.innerHTML='<p>Select a date to view reports or click a project tab to add new data.</p>'; var mc=document.getElementById('monthlyContent'); if(mc) mc.innerHTML='<p>Pick a month and click Generate.</p>'; var ac=document.getElementById('analyticsContent'); if(ac) ac.innerHTML='<p>Select dates and click \'Refresh Analytics\' or view \'All-Time Analytics\'.</p>'; msg.style.color='var(--ok-text)'; msg.textContent='✅ All cleaning data deleted.'; setTimeout(closeResetModal, 1300); }).catch(err=>{ msg.style.color='var(--c-error)'; msg.textContent='❌ Error: '+err.message; }); }
@@ -519,24 +601,18 @@
         async function loadTaskPhotos(refresh){
           var mv=curMonth();
           var cached=readTaskPhotosCache(mv);
-          if(cached){
+          if(cached && cached.length){
             _photosByMonth[mv]=cached;
-            pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !cached.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
-            var merged=cached.slice(); pendingPhotos.forEach(function(pp){ if(!merged.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged.push(pp); });
-            if(JSON.stringify(merged)!==JSON.stringify(taskPhotos)){ taskPhotos=merged; renderTaskChecklists(); }
+            applyTaskPhotosList(cached, mv);
           }
-          if(!refresh && cached) return;
+          if(!refresh && cached && cached.length) return;
           try{
             const d=await fetchTaskPhotosForMonth(mv, !!refresh);
-            if(Array.isArray(d)){
-              pendingPhotos=pendingPhotos.filter(function(pp){ return (Date.now()-pp._ts<120000) && !d.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; }); });
-              var merged2=d.slice(); pendingPhotos.forEach(function(pp){ if(!merged2.some(function(s){ return s.image===pp.image && s.task===pp.task && s.period===pp.period; })) merged2.push(pp); });
-              if(JSON.stringify(merged2)!==JSON.stringify(taskPhotos)){ taskPhotos=merged2; renderTaskChecklists(); }
-            }
+            if(Array.isArray(d) && d.length) applyTaskPhotosList(d, mv);
           }catch(e){ console.error('Task photos load error:', e.message); }
         }
-        function dailyPhotos(p, task, wk){ const per=curMonth()+'#'+wk; return taskPhotos.filter(x=>x.project===p && x.task===task && x.period===per).sort((a,b)=>String(a.date).localeCompare(String(b.date))); }
-        function monthlyPhotos(p, task){ return taskPhotos.filter(x=>x.project===p && x.task===task && x.period===curMonth()).sort((a,b)=>String(a.date).localeCompare(String(b.date))); }
+        function dailyPhotos(p, task, wk){ const per=curMonth()+'#'+wk; return taskPhotos.filter(x=>photoMatchesProject(x,p) && x.task===task && x.period===per).sort((a,b)=>String(a.date).localeCompare(String(b.date))); }
+        function monthlyPhotos(p, task){ return taskPhotos.filter(x=>photoMatchesProject(x,p) && x.task===task && x.period===curMonth()).sort((a,b)=>String(a.date).localeCompare(String(b.date))); }
         function photosFor(p, g, task){ return g.daily ? dailyPhotos(p, task, selWeek[p]||1) : monthlyPhotos(p, task); }
         function dailyCoveredCount(p, wk){ const dg=dailyGroupOf(p); return dg.tasks.filter(t=>dailyPhotos(p,t,wk).length>0).length; }
         function dailyWeekComplete(p, wk){ const dg=dailyGroupOf(p); return dailyCoveredCount(p,wk)===dg.tasks.length; }
@@ -688,8 +764,12 @@
           const key=taskCardKey(p, gi, ti); const editing=!!taskEditOpen[key]; const pending=pendingTaskUpload[key];
           const pendingList=pendingUrls(pending);
           let ph='';
-          if(editing){
-            photos.forEach(x=>{ ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" loading="lazy" decoding="async" style="height:90px;border-radius:12px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)"><button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button></span>'; });
+          if(editing || done){
+            photos.forEach(x=>{
+              ph+='<span style="position:relative;display:inline-block;margin:4px;"><img src="'+x.image+'" loading="lazy" decoding="async" style="height:90px;border-radius:12px;border:1px solid var(--card-border);cursor:pointer;" onclick="openModal(this.src)">';
+              if(editing) ph+='<button type="button" class="tc-del" data-del="'+x.id+'" title="Remove" style="position:absolute;top:-7px;right:-7px;background:#C5504F;color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+trashIconHtml()+'</button>';
+              ph+='</span>';
+            });
           }
           const showUpload=(!done || editing);
           let uploadHtml='';
@@ -789,14 +869,14 @@
           }
           host.querySelectorAll('.tc-del').forEach(x=>x.addEventListener('click', function(e){ e.stopPropagation(); removeTaskPhoto(this.dataset.del, this); }));
         }
-        function renderTaskChecklists(){ Object.keys(taskMap).forEach(p=>renderTaskProject(p)); }
+        function renderTaskChecklists(){ userProjectList().forEach(p=>renderTaskProject(p)); }
         function projName(p){ return {ALL:'All Projects',ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'}[p]||p; }
         function groupLabelFor(p, freq){ const cfg=taskMap[p]; if(!cfg) return ''; const g=cfg.groups.find(function(gg){ return gg.freq===freq; }); return g?g.label:''; }
         function metricTitle(m){ return {reports:'All Reports',photos:'Photos',buildings:'Buildings',floors:'Floors Cleaned',employees:'Employees'}[m]||'Details'; }
         function countReportPhotos(reports){ return reports.filter(function(r){ return r.image && String(r.image).length>0; }).length; }
         function countTaskPhotos(mphotos, project){
           if(!Array.isArray(mphotos)) return 0;
-          return mphotos.filter(function(x){ return x.image && (!project || x.project===project); }).length;
+          return mphotos.filter(function(x){ return x.image && (!project || photoMatchesProject(x, project)); }).length;
         }
         function countAllPhotos(reports, mphotos, project){
           var pr=project ? reports.filter(function(r){ return r.project===project; }) : reports;
@@ -816,7 +896,7 @@
           });
         }
         function allBuildingsFor(p){
-          if(p==='ALL'){ return ['ec','es','wd','ww','ww2','ra'].reduce((a,x)=>a.concat(Object.keys(floors[x]||{})), []); }
+          if(p==='ALL'){ return userProjectList().reduce((a,x)=>a.concat(Object.keys(floors[x]||{})), []); }
           return Object.keys(floors[p]||{});
         }
         function showProjectDetail(p, metric){
@@ -885,14 +965,14 @@
           let covList=[];
           try { const cr=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getRangeCoverage', from:(weeks[0]||from), to:(weeks[weeks.length-1]||to), token:empireGetToken()||''})}); const cd=await cr.json(); if(Array.isArray(cd)) covList=cd; else if(cd && cd.ok===false){ logout(); return; } } catch(e){ console.error('Coverage fetch error:', e.message); }
           let mphotos=[];
-          try { const mr=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:mv, token:empireGetToken()||''})}); const md=await mr.json(); if(Array.isArray(md)) mphotos=md; } catch(e){ console.error('Report photos error:', e.message); }
+          try { const mr=await fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'getTaskPhotos', periodPrefix:mv, token:empireGetToken()||''})}); const md=await mr.json(); if(Array.isArray(md)){ mphotos=md; applyTaskPhotosList(md, mv); } } catch(e){ console.error('Report photos error:', e.message); }
           const pname={ec:'Empire Complex',es:'Empire Square',wd:'West Diamond',ww:'West Wing',ww2:'(New) West Wing',ra:'Royal Apartment'};
           const imgs=countAllPhotos(monthReports, mphotos);
           let h='<h2>'+summaryIconHtml()+' Monthly Report — '+monthName+'</h2><p style="color:var(--text-soft);">'+from+' to '+to+' · Prepared by Swar Dizayee</p>';
           h+='<div style="margin:4px 0 16px;"><button id="dlReportBtn" onclick="downloadMonthlyReport()">'+downloadIconHtml()+' Download Report (offline HTML, with photos)</button></div>';
           h+='<div class="stats"><div class="stat-box"><div class="stat-value">'+monthReports.length+'</div><div class="stat-label">Total Reports</div></div><div class="stat-box"><div class="stat-value">'+imgs+'</div><div class="stat-label">Photos</div></div><div class="stat-box"><div class="stat-value">'+new Set(monthReports.map(r=>r.building)).size+'</div><div class="stat-label">Buildings</div></div><div class="stat-box"><div class="stat-value">'+monthReports.reduce((s,r)=>s+parseInt(r.employees||0),0)+'</div><div class="stat-label">Employees</div></div></div>';
           h+='<h3 style="margin-top:30px;">'+chartIconHtml()+' By Project (click any number for details)</h3>';
-          ['ec','es','wd','ww','ww2','ra'].forEach(p=>{
+          userProjectList().forEach(p=>{
             const pr=monthReports.filter(r=>r.project===p);
             const pi=countAllPhotos(monthReports, mphotos, p);
             const bi=new Set(pr.map(r=>r.building)).size;
@@ -959,7 +1039,7 @@
           b+='<div class="hd">'+(logo?'<img class="logo" src="'+logo+'">':'')+'<div><h1>Empire World — Monthly Report</h1><div class="sub">'+_esc(R.monthName)+'  ·  '+R.from+' to '+R.to+'</div><div class="sub">Prepared by Swar Dizayee  ·  Generated '+_esc(gen)+'</div></div></div>';
           b+='<div class="stats">'+_box(R.monthReports.length,'Total Reports')+_box(imgs,'Photos')+_box(new Set(R.monthReports.map(function(r){return r.building;})).size,'Buildings')+_box(R.monthReports.reduce(function(s,r){return s+parseInt(r.employees||0);},0),'Employees')+'</div>';
           b+='<h2>By Project</h2>';
-          ['ec','es','wd','ww','ww2','ra'].forEach(function(p){
+          userProjectList().forEach(function(p){
             var pr=R.monthReports.filter(function(r){return r.project===p;});
             var pi=countAllPhotos(R.monthReports, R.mphotos, p);
             var bi=new Set(pr.map(function(r){return r.building;})).size;
@@ -1017,21 +1097,68 @@
                 empireAuthLogout({ extraKeys: ['cleaning_reports_cache'], redirect: 'index.html', reload: false });
             });
         }
+        function hideCleaningTab(tabId) {
+          document.querySelectorAll('.side-nav .tab-btn').forEach(function (b) {
+            var oc = b.getAttribute('onclick') || '';
+            if (oc.indexOf("'" + tabId + "'") !== -1) b.style.display = 'none';
+          });
+          var panel = document.getElementById(tabId);
+          if (panel) {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+          }
+        }
+        function ensureCleaningActiveTab() {
+          var active = document.querySelector('.tab-content.active');
+          if (!active || active.style.display !== 'none') return;
+          var pick = null;
+          ['all', 'analytics', 'monthly'].some(function (id) {
+            var panel = document.getElementById(id);
+            if (panel && panel.style.display !== 'none') { pick = id; return true; }
+            return false;
+          });
+          if (!pick) {
+            var allowed = userProjectList();
+            if (allowed.length) pick = PROJECT_TAB_MAP[allowed[0]];
+          }
+          if (pick) switchTab(null, pick);
+        }
         function applyPerms(){
             var role = empireGetRole()||'';
             var u = empireGetUser()||'';
+            var p = empireGetPerms();
+            document.querySelectorAll('.side-nav .tab-btn:not([data-cleaning-proj])').forEach(function (b) { b.style.display = ''; });
+            ['all', 'analytics', 'monthly'].forEach(function (id) {
+              var panel = document.getElementById(id);
+              if (panel) panel.style.display = '';
+            });
             var rb = document.getElementById('btnReset'); if(rb) rb.style.display = (role==='admin') ? '' : 'none';
             var cs = document.getElementById('connectionCheckSection'); if(cs) cs.style.display = (role==='admin') ? '' : 'none';
             var tb = document.getElementById('txtSetBtn'); if(tb) tb.style.display = (role==='admin') ? 'flex' : 'none';
             var tp = document.getElementById('txtSetPanel'); if(tp && role!=='admin') tp.style.display='none';
-            var wl = document.getElementById('whoLabel'); if(wl) wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : '';
+            if (p.dashboard === false) hideCleaningTab('all');
+            if (p.analytics === false) hideCleaningTab('analytics');
+            if (p.report === false) hideCleaningTab('monthly');
+            var cleaningOnly = empireSingleDeptHome() === 'cleaning';
+            var catBtn = document.getElementById('btnCategories');
+            if (catBtn) catBtn.style.display = cleaningOnly ? 'none' : '';
+            var backLink = document.getElementById('loginBackLink');
+            if (backLink) backLink.style.display = cleaningOnly ? 'none' : '';
+            ensureCleaningActiveTab();
+            var wl = document.getElementById('whoLabel');
+            if(wl) {
+              var label = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : '';
+              var scoped = empireGetProjects();
+              if (scoped && scoped.length) label += ' · Projects: ' + scoped.map(function (p) { return projName(p); }).join(', ');
+              wl.textContent = label;
+            }
         }
         var _lastPermFetch=0;
         function refreshPerms(){
             var now=Date.now();
             if(now-_lastPermFetch<300000) return;
             _lastPermFetch=now;
-            empireAuthRefreshPerms(function(){ applyPerms(); });
+            empireAuthRefreshPerms(function(){ applyPerms(); applyCleaningProjectScope(); });
         }
         function startSyncPolling(){
             if(window._syncStarted) return;
@@ -1048,18 +1175,18 @@
             document.getElementById('loginPage').classList.remove('show');
             document.getElementById('mainContainer').classList.add('show');
             applyPerms();
+            applyCleaningProjectScope();
             refreshPerms();
             if(window.tsLoadGlobal) window.tsLoadGlobal();
             var tc=readTasksCache(); if(tc) taskState=tc;
             var wc=readWeekCovCache(); if(wc) weekCov=wc;
-            var tp=readTaskPhotosCache(curMonth()); if(tp){ taskPhotos=tp; _photosByMonth[curMonth()]=tp; }
-            buildProjectFilterBoxes();
-            ['ec','es','wd','ww','ww2','ra'].forEach(function(p){ try{ updateFloors(p); }catch(e){ console.error('updateFloors', p, e); } });
+            var tp=readTaskPhotosCache(curMonth()); if(tp && tp.length){ applyTaskPhotosList(tp, curMonth()); }
+            userProjectList().forEach(function(p){ try{ updateFloors(p); }catch(e){ console.error('updateFloors', p, e); } });
             try{ renderTaskChecklists(); }catch(e){ console.error('renderTaskChecklists', e); }
             setTimeout(function(){ loadReports(); loadTasks(); loadWeekCoverage(); loadTaskPhotos(true); }, 0);
             startSyncPolling();
             const d = new Date(); const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-            ['ec','es','wd','ww','ww2','ra'].forEach(p=>{ const di=document.getElementById(p+'-date'); if(di)di.value=today; });
+            userProjectList().forEach(p=>{ const di=document.getElementById(p+'-date'); if(di)di.value=today; });
             if(document.getElementById('filterDate')) document.getElementById('filterDate').value=today;
         }
         function bootDashboard(){

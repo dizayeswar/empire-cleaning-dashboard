@@ -38,9 +38,7 @@
 
         function canSeeSection(accessDept) {
             if (empireIsAdminSession()) return true;
-            if (empireCanAccessDept(accessDept)) return true;
-            if (empireCanAccessDept('cleaning')) return true;
-            return false;
+            return empireCanAccessDept(accessDept);
         }
 
         function render() {

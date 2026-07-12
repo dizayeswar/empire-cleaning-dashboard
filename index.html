@@ -6,7 +6,7 @@
     <link rel="icon" href="logo-light.png" type="image/png">
     <link rel="preconnect" href="https://script.google.com">
     <link rel="preconnect" href="https://api.imgbb.com">
-    <title>Empire World — Login</title>
+    <title>Empire General Service — Login</title>
     <link rel="stylesheet" href="assets/empire-hub.css">
 </head>
 <body class="login-landing">
@@ -17,7 +17,7 @@
 
     <div id="loginView" class="wrap wide login-wrap">
         <header>
-            <h1>Empire World</h1>
+            <h1>Empire General Service</h1>
             <p>Sign in to open your dashboard</p>
         </header>
         <div class="hub-auth hub-auth-landing">
@@ -32,13 +32,29 @@
         <footer>Prepared by <strong>Swar Dizayee</strong></footer>
     </div>
 
-    <div id="adminView" class="wrap wide" style="display:none;">
-        <header>
-            <h1>Empire World</h1>
-            <p id="hubSubtitle">Choose a department</p>
+    <div id="adminView" class="hub-dashboard" style="display:none;">
+        <header class="hub-toolbar">
+            <div class="hub-toolbar-side hub-toolbar-side-left">
+                <img src="logo-light.png" alt="Empire General Service" class="hub-toolbar-logo">
+            </div>
+            <div class="hub-toolbar-brand">
+                <div class="hub-toolbar-text">
+                    <div class="hub-toolbar-title">Empire General Service</div>
+                    <div class="hub-toolbar-sub" id="hubSubtitle">Departments</div>
+                </div>
+            </div>
+            <div class="hub-toolbar-actions">
+                <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark or light mode"><span class="nav-icon theme-icon"></span> <span class="lbl">Theme</span></button>
+                <div id="hubAuth" class="hub-user-menu"></div>
+            </div>
         </header>
-        <div id="hubAuth" class="hub-auth logged-in"></div>
-        <div class="grid" id="grid"></div>
+        <main class="hub-main">
+            <div class="hub-page-head">
+                <h2 id="hubPageTitle">Select a department</h2>
+                <p id="hubPageDesc">Choose where you want to work.</p>
+            </div>
+            <div class="grid" id="grid"></div>
+        </main>
         <footer>Prepared by <strong>Swar Dizayee</strong></footer>
     </div>
 
@@ -48,13 +64,10 @@
     <script src="assets/empire-core.js"></script>
     <script>
         const categories = [
-            { icon:'🧹', name:'Cleaning Department', desc:'Daily reports, task checklists & monthly report.', link:'cleaning-dashboard.html', active:true, accessDept:'cleaning' },
+            { icon:'🧹', name:'Cleaning Department', desc:'Daily reports, issues found on rounds & more.', link:'cleaning.html', active:true, accessDept:'cleaning' },
             { icon:'🏗️', name:'Civil Department', desc:'Daily maintenance jobs & monthly reports.', link:'civil-department.html', active:true, accessDept:'civil department' },
-            { icon:'🔧', name:'Civil Issues', desc:'Track and fix civil maintenance issues.', link:'civil-issue.html', active:true, accessDept:'civil issue' },
             { icon:'⛑️', name:'HSE Inspections', desc:'Fire safety equipment checks.', link:'hse-inspection.html', active:true, accessDept:'hse' },
-            { icon:'⚡', name:'Electrical Department', desc:'Daily jobs & monthly reports.', link:'electrical.html', active:true, accessDept:'electrical department' },
-            { icon:'🔌', name:'Electric Issues', desc:'Track electrical issues.', link:'electric-issue.html', active:true, accessDept:'electric issue' },
-            { icon:'🔥', name:'Fire / Mechanical Issues', desc:'Fire fighting & mechanical issues.', link:'fire-issue.html', active:true, accessDept:'fire' }
+            { icon:'⚡', name:'Electrical Department', desc:'Daily jobs & monthly reports.', link:'electrical.html', active:true, accessDept:'electrical department' }
         ];
 
         function afterLogin() {
@@ -94,9 +107,17 @@
         function showAdminHub() {
             document.getElementById('loginView').style.display = 'none';
             document.getElementById('adminView').style.display = '';
+            document.querySelector('.topbar').style.display = 'none';
             document.body.classList.remove('login-landing');
+            var isAdmin = empireIsAdminSession();
             var sub = document.getElementById('hubSubtitle');
-            if (sub) sub.textContent = empireIsAdminSession() ? 'Admin — choose a department' : 'Choose a department';
+            var title = document.getElementById('hubPageTitle');
+            var desc = document.getElementById('hubPageDesc');
+            if (sub) sub.textContent = isAdmin ? 'Admin hub' : 'Your departments';
+            if (title) title.textContent = isAdmin ? 'All departments' : 'Your departments';
+            if (desc) desc.textContent = isAdmin
+                ? 'Open any section below to manage operations.'
+                : 'Open one of your assigned sections below.';
             renderAuthBar();
             renderGrid();
         }
@@ -104,6 +125,7 @@
         function showLoginOnly() {
             document.getElementById('loginView').style.display = '';
             document.getElementById('adminView').style.display = 'none';
+            document.querySelector('.topbar').style.display = '';
             document.body.classList.add('login-landing');
         }
 
@@ -111,26 +133,84 @@
             var box = document.getElementById('hubAuth');
             var u = empireGetUser();
             var role = empireGetRole();
-            var accessLabel = empireIsAdminSession() ? 'Admin access' : 'Your departments';
-            box.innerHTML = '<div class="hub-session">Logged in as <strong>' + (u || 'user') + '</strong>' +
-                (role ? (' (' + role + ')') : '') + ' — ' + accessLabel + '</div>' +
-                '<button type="button" onclick="hubLogout()">Logout</button>';
+            var initial = (u || 'U').charAt(0).toUpperCase();
+            box.innerHTML =
+                '<div class="hub-user-dropdown-wrap" id="hubUserDropdown">' +
+                    '<button type="button" class="hub-user-chip" onclick="toggleUserMenu(event)" aria-haspopup="true" aria-expanded="false" id="hubUserMenuBtn">' +
+                        '<span class="hub-user-avatar" aria-hidden="true">' + initial + '</span>' +
+                        '<span class="hub-user-meta">' +
+                            '<span class="hub-user-name">' + (u || 'user') + '</span>' +
+                            (role ? ('<span class="hub-user-role">' + role + '</span>') : '') +
+                        '</span>' +
+                        '<span class="hub-user-caret" aria-hidden="true">▾</span>' +
+                    '</button>' +
+                    '<div class="hub-user-menu-panel" id="hubUserMenuPanel" role="menu">' +
+                        '<button type="button" class="hub-user-menu-item" role="menuitem" onclick="hubLogout()">Logout</button>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        function toggleUserMenu(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            var wrap = document.getElementById('hubUserDropdown');
+            var btn = document.getElementById('hubUserMenuBtn');
+            if (!wrap) return;
+            var open = wrap.classList.toggle('open');
+            if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        function closeUserMenu() {
+            var wrap = document.getElementById('hubUserDropdown');
+            var btn = document.getElementById('hubUserMenuBtn');
+            if (wrap) wrap.classList.remove('open');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+
+        document.addEventListener('click', function (e) {
+            var wrap = document.getElementById('hubUserDropdown');
+            if (!wrap || !wrap.classList.contains('open')) return;
+            if (!wrap.contains(e.target)) closeUserMenu();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeUserMenu();
+        });
+
+        var CLEANING_CHILD_DEPTS = ['cleaning', 'civil issue', 'electric issue', 'fire'];
+
+        function canSeeHubTile(accessDept) {
+            if (empireIsAdminSession()) return true;
+            if (empireCanAccessDept(accessDept)) return true;
+            if (accessDept === 'cleaning') {
+                for (var i = 0; i < CLEANING_CHILD_DEPTS.length; i++) {
+                    if (empireCanAccessDept(CLEANING_CHILD_DEPTS[i])) return true;
+                }
+            }
+            return false;
         }
 
         function renderGrid() {
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
+            var count = 0;
             categories.forEach(function (c) {
-                if (!empireCanAccessDept(c.accessDept)) return;
+                if (!canSeeHubTile(c.accessDept)) return;
+                count++;
                 var el = document.createElement('a');
                 el.href = c.link;
                 el.className = 'tile active';
-                el.innerHTML = '<div class="icon">' + c.icon + '</div>' +
+                el.innerHTML =
+                    '<div class="tile-top">' +
+                        '<div class="tile-icon-wrap"><span class="tile-icon">' + c.icon + '</span></div>' +
+                        '<span class="tile-arrow" aria-hidden="true">→</span>' +
+                    '</div>' +
                     '<h2>' + c.name + '</h2>' +
-                    '<p>' + c.desc + '</p>' +
-                    '<span class="badge open">Open</span>';
+                    '<p>' + c.desc + '</p>';
                 grid.appendChild(el);
             });
+            if (!count) {
+                grid.innerHTML = '<div class="hub-empty">No departments are assigned to this account.</div>';
+            }
         }
 
         function bootIndex() {

@@ -23,36 +23,60 @@
         <div class="grid" id="grid"></div>
         <footer>Prepared by <strong>Swar Dizayee</strong></footer>
     </div>
+    <script src="config.js"></script>
+    <script src="assets/empire-api.js"></script>
+    <script src="assets/empire-auth.js"></script>
     <script src="assets/empire-core.js"></script>
     <script>
         const sections = [
-            { icon:'🧹', name:'Cleaning', desc:'Daily reports, task checklists & monthly report.', link:'cleaning-dashboard.html', active:true },
-            { icon:'🧱', name:'Civil Issue', desc:'Building issues found during cleaning rounds — log photos & track repairs.', link:'civil-issue.html', active:true },
-            { icon:'⚡', name:'Electric Issue', desc:'Electrical problems found in buildings — log photos & track repairs.', link:'electric-issue.html', active:true },
-            { icon:'🧯', name:'Fire Fighting & Mechanical', desc:'Fire safety systems & mechanical equipment — inspections and maintenance.', link:'fire-issue.html', active:true }
+            { icon:'🧹', name:'Cleaning', desc:'Daily reports, task checklists & monthly report.', link:'cleaning-dashboard.html', active:true, accessDept:'cleaning' },
+            { icon:'🧱', name:'Civil Issue', desc:'Building issues found during cleaning rounds — log photos & track repairs.', link:'civil-issue.html', active:true, accessDept:'civil issue' },
+            { icon:'⚡', name:'Electric Issue', desc:'Electrical problems found in buildings — log photos & track repairs.', link:'electric-issue.html', active:true, accessDept:'electric issue' },
+            { icon:'🧯', name:'Fire Fighting & Mechanical', desc:'Fire safety systems & mechanical equipment — inspections and maintenance.', link:'fire-issue.html', active:true, accessDept:'fire' }
         ];
+
+        function canSeeSection(accessDept) {
+            if (empireIsAdminSession()) return true;
+            if (empireCanAccessDept(accessDept)) return true;
+            if (empireCanAccessDept('cleaning')) return true;
+            return false;
+        }
+
         function render(){
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
-            sections.forEach(c => {
-                let el;
-                if (c.active && c.link) {
-                    el = document.createElement('a');
-                    el.href = c.link;
-                    el.className = 'tile active';
-                } else {
-                    el = document.createElement('div');
-                    el.className = 'tile soon';
-                    el.addEventListener('click', () => alert(c.name + ' is coming soon.'));
-                }
+            var count = 0;
+            sections.forEach(function (c) {
+                if (!canSeeSection(c.accessDept)) return;
+                count++;
+                var el = document.createElement('a');
+                el.href = c.link;
+                el.className = 'tile active';
                 el.innerHTML = '<div class="icon">' + c.icon + '</div>' +
                     '<h2>' + c.name + '</h2>' +
                     '<p>' + c.desc + '</p>' +
-                    '<span class="badge ' + (c.active ? 'open' : 'wait') + '">' + (c.active ? 'Open' : 'Coming Soon') + '</span>';
+                    '<span class="badge open">Open</span>';
                 grid.appendChild(el);
             });
+            if (!count) {
+                grid.innerHTML = '<div class="hub-empty" style="grid-column:1/-1;">No cleaning sections are available for this account.</div>';
+            }
         }
-        render();
+
+        function bootCleaningHub() {
+            empireMigrateSession();
+            if (!empireGetToken()) {
+                location.replace('index.html');
+                return;
+            }
+            if (!empireCanAccessDept('cleaning') && !empireIsAdminSession()) {
+                empireRedirectToUserHome();
+                return;
+            }
+            render();
+        }
+
+        bootCleaningHub();
     </script>
 </body>
 </html>

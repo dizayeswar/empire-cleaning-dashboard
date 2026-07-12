@@ -127,7 +127,7 @@ function empireClearSession() {
 }
 
 var EMPIRE_DEPT_HOME = {
-  cleaning: 'cleaning-dashboard.html',
+  cleaning: 'cleaning.html',
   'civil issue': 'civil-issue.html',
   fire: 'fire-issue.html',
   'electric issue': 'electric-issue.html',

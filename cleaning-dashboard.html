@@ -172,19 +172,6 @@
         function handleLogin(e) {
           empireAuthLogin(e, 'cleaning', { onSuccess: function(){ enterDashboard(); } });
         }
-        async function fetchJSONRetry(body, attempts){
-          var lastErr=null;
-          for(var attempt=0; attempt<(attempts||3); attempt++){
-            try {
-              var response = await fetch(GOOGLE_SCRIPT_URL, {method:'POST', body:JSON.stringify(body)});
-              var text = await response.text();
-              if(!response.ok) throw new Error('Request failed: '+response.status);
-              if(!text || text.trim().charAt(0)==='<') throw new Error('Server busy or timed out. Please try again.');
-              return JSON.parse(text);
-            } catch(e) { lastErr=e; await new Promise(function(res){ setTimeout(res, 600*(attempt+1)); }); }
-          }
-          throw lastErr || new Error('Request failed');
-        }
         function readReportsCache(){ try{ var s=localStorage.getItem('cleaning_reports_cache'); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
         function writeReportsCache(a){ try{ localStorage.setItem('cleaning_reports_cache', JSON.stringify(a)); }catch(e){} }
         function readTasksCache(){ try{ var s=localStorage.getItem('cleaning_tasks_cache'); if(!s) return null; var o=JSON.parse(s); return (o&&typeof o==='object'&&!Array.isArray(o))?o:null; }catch(e){ return null; } }

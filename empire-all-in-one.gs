@@ -18,7 +18,7 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-13-civil-assign-photos';
+var SCRIPT_VERSION = '2026-07-13-civil-bulk-assign';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_TRADE_IDS = {pipes:1, painting:1, tiles:1, wood:1};
 var HSE_INSPECTOR = 'Evan Mansour';
@@ -1215,21 +1215,35 @@ function handleAssignCivilIssue(body, auth) {
   if (role !== 'admin' && role !== 'editor') return {ok:false, error:'not_allowed', message:'Only engineer accounts can assign issues.'};
   var group = normalizeTrade_(body.assignedGroup || body.group || '');
   if (!group && body.assignedGroup !== '' && body.group !== '') return {ok:false, error:'invalid_group', message:'Invalid trade group. Use pipes, painting, tiles, or wood.'};
+  var idList = [];
+  if (body.ids && Object.prototype.toString.call(body.ids) === '[object Array]') {
+    for (var k = 0; k < body.ids.length; k++) {
+      var rawId = String(body.ids[k] || '').trim();
+      if (rawId) idList.push(rawId);
+    }
+  } else if (body.id) {
+    idList.push(String(body.id));
+  }
+  if (!idList.length) return {ok:false, error:'missing_id', message:'Select at least one issue.'};
   var ss = getSS_();
   var sheet = ss.getSheetByName(CIVIL_SHEET);
   if (!sheet) return {ok:false, error:'Sheet not found'};
   ensureCivilIssueHeaders_(sheet);
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return {ok:false, error:'Issue not found'};
-  var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === String(body.id)) {
+  var want = {};
+  for (var w = 0; w < idList.length; w++) want[idList[w]] = true;
+  var sheetIds = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  var updated = 0;
+  for (var i = 0; i < sheetIds.length; i++) {
+    if (want[String(sheetIds[i][0])]) {
       sheet.getRange(i + 2, CIVIL_ASSIGNED_COL).setValue(group);
-      invalidateIssuesCache_(CIVIL_SHEET);
-      return {ok:true, success:true, assignedGroup:group};
+      updated++;
     }
   }
-  return {ok:false, error:'Issue not found'};
+  if (!updated) return {ok:false, error:'Issue not found'};
+  invalidateIssuesCache_(CIVIL_SHEET);
+  return {ok:true, success:true, assignedGroup:group, updated:updated};
 }
 
 function parseFixedPhotosFromCell_(raw) {

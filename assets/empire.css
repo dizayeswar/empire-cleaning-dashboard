@@ -87,6 +87,12 @@ tr.issue-row { cursor:pointer; } tr.issue-row:hover { background:var(--row-hover
 html[data-theme="dark"] .issue-card-check { background:rgba(13,50,100,0.92); }
 .issue-select-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; padding:10px 12px; background:var(--task-bg,var(--row-hover)); border:1px solid var(--card-border); border-radius:var(--radius-md); }
 .issue-select-bar span { font-size:13px; color:var(--text-soft); }
+.issue-select-bar .bulk-assign-select { padding:7px 10px; border:2px solid var(--input-border); border-radius:8px; background:var(--input-bg); color:var(--text); font-size:12px; min-width:130px; }
+.issue-select-bar .bulk-assign-btn { background:#8d015d; color:#fff; border:none; border-radius:999px; padding:8px 14px; font-weight:700; font-size:12px; cursor:pointer; }
+.issue-select-bar .bulk-assign-btn:disabled { cursor:not-allowed; }
+.issue-select-bar .bulk-assign-btn.saving { opacity:0.75; }
+.issue-select-bar .bulk-assign-btn.saved { background:#1d9e75; }
+.issue-select-bar .bulk-assign-btn.error { background:#C5504F; }
 .issue-card-photo { width:100%; height:140px; object-fit:cover; display:block; background:var(--row-hover); }
 .issue-card-nophoto { display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:13px; }
 .issue-card-body { padding:12px 14px; }

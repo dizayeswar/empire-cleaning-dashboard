@@ -184,9 +184,9 @@ function enterWorkerApp() {
   if (wa) wa.classList.add('show');
   var trade = empireGetTrade() || '';
   var title = document.getElementById('workerTeamTitle');
-  var who = document.getElementById('workerWho');
-  if (title) title.textContent = tradeGroupLabel(trade) + ' \u2014 open jobs';
-  if (who) who.textContent = (empireGetUser() || '') + ' (' + tradeGroupLabel(trade) + ' team)';
+  var user = empireGetUser() || '';
+  var teamLabel = tradeGroupLabel(trade);
+  if (title) title.textContent = user + ' (' + teamLabel + ' team)';
   setTimeout(function () { loadIssues(false); }, 0);
 }
 function renderWorkerJobs() {

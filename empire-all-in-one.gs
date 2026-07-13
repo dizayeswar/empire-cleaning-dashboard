@@ -18,8 +18,10 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-13-civil-bulk-assign';
+var SCRIPT_VERSION = '2026-07-13-civil-two-workers';
 var CIVIL_ASSIGNED_COL = 17;
+var CIVIL_WORKERS_REQUIRED_COL = 18;
+var CIVIL_WORKER_COMPLETIONS_COL = 19;
 var CIVIL_TRADE_IDS = {pipes:1, painting:1, tiles:1, wood:1};
 var HSE_INSPECTOR = 'Evan Mansour';
 var HSE_ASSETKEY_COL = 17;
@@ -288,12 +290,72 @@ function tradeForUserRow_(row) {
 function ensureCivilIssueHeaders_(sheet) {
   if (!sheet) return;
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup']);
+    sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions']);
     return;
   }
   if (String(sheet.getRange(1, CIVIL_ASSIGNED_COL).getValue() || '') !== 'assignedGroup') {
     sheet.getRange(1, CIVIL_ASSIGNED_COL).setValue('assignedGroup');
   }
+  if (String(sheet.getRange(1, CIVIL_WORKERS_REQUIRED_COL).getValue() || '') !== 'workersRequired') {
+    sheet.getRange(1, CIVIL_WORKERS_REQUIRED_COL).setValue('workersRequired');
+  }
+  if (String(sheet.getRange(1, CIVIL_WORKER_COMPLETIONS_COL).getValue() || '') !== 'workerCompletions') {
+    sheet.getRange(1, CIVIL_WORKER_COMPLETIONS_COL).setValue('workerCompletions');
+  }
+}
+function parseWorkersRequired_(raw) {
+  var n = Number(raw || 1);
+  return n >= 2 ? 2 : 1;
+}
+function parseWorkerCompletions_(raw) {
+  raw = String(raw || '').trim();
+  if (!raw || raw.charAt(0) !== '[') return [];
+  try {
+    var arr = JSON.parse(raw);
+    if (!arr || !arr.length) return [];
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var item = arr[i] || {};
+      var photos = [];
+      if (item.photos && item.photos.length) {
+        for (var j = 0; j < item.photos.length; j++) {
+          var u = String(item.photos[j] || '').trim();
+          if (u) photos.push(u);
+        }
+      }
+      if (!photos.length) continue;
+      out.push({
+        user: String(item.user || '').trim(),
+        photos: photos,
+        at: String(item.at || '').trim(),
+        note: String(item.note || '').trim()
+      });
+    }
+    return out;
+  } catch (e) {
+    return [];
+  }
+}
+function formatWorkerCompletions_(completions) {
+  return JSON.stringify(completions || []);
+}
+function workerAlreadyCompleted_(completions, username) {
+  username = String(username || '').trim().toLowerCase();
+  if (!username) return false;
+  for (var i = 0; i < completions.length; i++) {
+    if (String((completions[i] && completions[i].user) || '').trim().toLowerCase() === username) return true;
+  }
+  return false;
+}
+function mergeWorkerCompletionPhotos_(completions) {
+  var photos = [];
+  for (var i = 0; i < completions.length; i++) {
+    var list = completions[i].photos || [];
+    for (var j = 0; j < list.length; j++) {
+      if (photos.indexOf(list[j]) === -1) photos.push(list[j]);
+    }
+  }
+  return photos;
 }
 function getUserRowByName_(username) {
   var ss = getSS_();
@@ -1127,7 +1189,7 @@ function handleAddIssue(body, sheetName) {
   var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
   var isCivil = (sheetName === CIVIL_SHEET);
   if (sheet.getLastRow()===0) {
-    if (isCivil) sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup']);
+    if (isCivil) sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions']);
     else sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num']);
   } else if (isCivil) {
     ensureCivilIssueHeaders_(sheet);
@@ -1146,7 +1208,7 @@ function handleAddIssue(body, sheetName) {
   var reporter = String(body.supervisor||'').trim() || String(body.username||'');
   var status = issueStatusFromCondition_(body);
   if (isCivil) {
-    sheet.appendRow([id, body.project||'', body.building||'', body.floor||'', body.spot||'', body.issueType||'', body.note||'', body.date||'', body.photo||'', '', status, reporter, new Date().toISOString(), '', '', num, '']);
+    sheet.appendRow([id, body.project||'', body.building||'', body.floor||'', body.spot||'', body.issueType||'', body.note||'', body.date||'', body.photo||'', '', status, reporter, new Date().toISOString(), '', '', num, '', 1, '']);
   } else {
     sheet.appendRow([id, body.project||'', body.building||'', body.floor||'', body.spot||'', body.issueType||'', body.note||'', body.date||'', body.photo||'', '', status, reporter, new Date().toISOString(), '', '', num]);
   }
@@ -1199,12 +1261,24 @@ function handleGetIssues(body, sheetName, auth) {
     var st=String(rows[i][10]||'open');
     var fp=String(rows[i][9]||'');
     var assignedGroup = sheetName === CIVIL_SHEET ? normalizeTrade_(rows[i][CIVIL_ASSIGNED_COL - 1] || '') : '';
+    var workersRequired = sheetName === CIVIL_SHEET ? parseWorkersRequired_(rows[i][CIVIL_WORKERS_REQUIRED_COL - 1]) : 1;
+    var workerCompletions = sheetName === CIVIL_SHEET ? parseWorkerCompletions_(rows[i][CIVIL_WORKER_COMPLETIONS_COL - 1]) : [];
     if (isWorker) {
       if (st === 'fixed') continue;
       if (assignedGroup !== workerTrade) continue;
+      if (workerAlreadyCompleted_(workerCompletions, auth.username)) continue;
     }
     var fixedPhotos = st === 'fixed' ? parseFixedPhotosFromCell_(fp) : [];
-    out.push({id:String(rows[i][0]),num:Number(rows[i][ISSUE_NUM_COL-1]||0),project:String(rows[i][1]),building:String(rows[i][2]),floor:String(rows[i][3]),spot:String(rows[i][4]),issueType:String(rows[i][5]),note:String(rows[i][6]||''),date:ds,photo:String(rows[i][8]||''),fixedPhoto:(st==='fixed'?fp:''),fixedPhotos:fixedPhotos,status:st,createdBy:String(rows[i][11]||''),createdAt:dtIssue_(rows[i][12]),fixedBy:String(rows[i][13]||''),fixedAt:dtIssue_(rows[i][14]),assignedGroup:assignedGroup});
+    if (sheetName === CIVIL_SHEET && st !== 'fixed' && workerCompletions.length) {
+      fixedPhotos = mergeWorkerCompletionPhotos_(workerCompletions);
+    }
+    var item = {id:String(rows[i][0]),num:Number(rows[i][ISSUE_NUM_COL-1]||0),project:String(rows[i][1]),building:String(rows[i][2]),floor:String(rows[i][3]),spot:String(rows[i][4]),issueType:String(rows[i][5]),note:String(rows[i][6]||''),date:ds,photo:String(rows[i][8]||''),fixedPhoto:(st==='fixed'?fp:(fixedPhotos.length?formatFixedPhotosForStorage_(fixedPhotos):'')),fixedPhotos:fixedPhotos,status:st,createdBy:String(rows[i][11]||''),createdAt:dtIssue_(rows[i][12]),fixedBy:String(rows[i][13]||''),fixedAt:dtIssue_(rows[i][14]),assignedGroup:assignedGroup};
+    if (sheetName === CIVIL_SHEET) {
+      item.workersRequired = workersRequired;
+      item.workerCompletions = workerCompletions;
+      item.workerDone = workerCompletions.length;
+    }
+    out.push(item);
   }
   issuesCachePut_(ckey, out);
   return out;
@@ -1225,6 +1299,7 @@ function handleAssignCivilIssue(body, auth) {
     idList.push(String(body.id));
   }
   if (!idList.length) return {ok:false, error:'missing_id', message:'Select at least one issue.'};
+  var workersRequired = body.workersRequired !== undefined ? parseWorkersRequired_(body.workersRequired) : null;
   var ss = getSS_();
   var sheet = ss.getSheetByName(CIVIL_SHEET);
   if (!sheet) return {ok:false, error:'Sheet not found'};
@@ -1238,12 +1313,19 @@ function handleAssignCivilIssue(body, auth) {
   for (var i = 0; i < sheetIds.length; i++) {
     if (want[String(sheetIds[i][0])]) {
       sheet.getRange(i + 2, CIVIL_ASSIGNED_COL).setValue(group);
+      if (workersRequired !== null) {
+        sheet.getRange(i + 2, CIVIL_WORKERS_REQUIRED_COL).setValue(workersRequired);
+        sheet.getRange(i + 2, CIVIL_WORKER_COMPLETIONS_COL).setValue('');
+        sheet.getRange(i + 2, 10).setValue('');
+        sheet.getRange(i + 2, 14).setValue('');
+        sheet.getRange(i + 2, 15).setValue('');
+      }
       updated++;
     }
   }
   if (!updated) return {ok:false, error:'Issue not found'};
   invalidateIssuesCache_(CIVIL_SHEET);
-  return {ok:true, success:true, assignedGroup:group, updated:updated};
+  return {ok:true, success:true, assignedGroup:group, workersRequired:workersRequired || 1, updated:updated};
 }
 
 function parseFixedPhotosFromCell_(raw) {
@@ -1313,6 +1395,31 @@ function handleMarkFixed(body, sheetName, auth) {
         var ag = normalizeTrade_(rows[i][CIVIL_ASSIGNED_COL - 1] || '');
         if (ag !== workerTrade) return {ok:false, error:'not_assigned', message:'This issue is not assigned to your team.'};
         if (String(rows[i][10] || '') === 'fixed') return {ok:false, error:'already_fixed', message:'This issue is already fixed.'};
+        var workersRequired = parseWorkersRequired_(rows[i][CIVIL_WORKERS_REQUIRED_COL - 1]);
+        var completions = parseWorkerCompletions_(rows[i][CIVIL_WORKER_COMPLETIONS_COL - 1]);
+        if (workerAlreadyCompleted_(completions, fixedBy)) {
+          return {ok:false, error:'already_submitted', message:'You already submitted your fix for this job.'};
+        }
+        completions.push({user: fixedBy, photos: photos, at: new Date().toISOString(), note: String(body.fixNote || '').trim()});
+        sheet.getRange(i+1, CIVIL_WORKER_COMPLETIONS_COL).setValue(formatWorkerCompletions_(completions));
+        var allPhotos = mergeWorkerCompletionPhotos_(completions);
+        sheet.getRange(i+1,10).setValue(formatFixedPhotosForStorage_(allPhotos));
+        if (workersRequired >= 2 && completions.length < workersRequired) {
+          sheet.getRange(i+1,14).setValue(fixedBy + ' (' + completions.length + '/' + workersRequired + ')');
+          invalidateIssuesCache_(sheetName);
+          return {ok:true, success:true, partial:true, workerDone:completions.length, workersRequired:workersRequired, workerCompletions:completions};
+        }
+        sheet.getRange(i+1,11).setValue('fixed');
+        var allBy = [];
+        for (var c = 0; c < completions.length; c++) {
+          var nm = String((completions[c] && completions[c].user) || '').trim();
+          if (nm && allBy.indexOf(nm) === -1) allBy.push(nm);
+        }
+        sheet.getRange(i+1,14).setValue(allBy.join(', ') || fixedBy);
+        sheet.getRange(i+1,15).setValue(new Date().toISOString());
+        if (body.fixNote) sheet.getRange(i+1,7).setValue(String(rows[i][6]||'') + (rows[i][6] ? ' | ' : '') + 'Fix: ' + String(body.fixNote));
+        invalidateIssuesCache_(sheetName);
+        return {ok:true, success:true, partial:false, workerDone:completions.length, workersRequired:workersRequired};
       }
       var fixedBy = String(body.username || '');
       if (role !== 'worker' && body.fixedByName) fixedBy = String(body.fixedByName || fixedBy);

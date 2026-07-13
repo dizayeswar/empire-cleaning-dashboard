@@ -463,3 +463,51 @@
 .trade-badge.unassigned {
   color: var(--c-warn, #b8860b);
 }
+.workers-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #eef4ff;
+  color: #185fa5;
+  border: 1px solid #c5d9f2;
+}
+.badge.partial {
+  color: #b8860b;
+}
+.assign-two-workers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-top: 8px;
+  cursor: pointer;
+}
+.assign-two-workers input {
+  width: 16px;
+  height: 16px;
+}
+.worker-two-note {
+  background: #fff8e6;
+  border: 1px solid #e6c200;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.worker-completions {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--task-bg);
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+}
+.worker-completion-item + .worker-completion-item {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--card-border);
+}

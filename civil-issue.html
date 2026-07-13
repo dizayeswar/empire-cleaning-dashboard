@@ -108,8 +108,6 @@
   </div>
   <div id="list" class="tab-content active">
     <div class="form-section"><h2><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> Reported Issues</h2>
-      <div id="projectFilterBar" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px;"></div>
-      <div id="tradeFilterBar"></div>
       <div class="form-row">
         <div class="form-group"><label>Project</label><select id="f-project" onchange="selectProjectFilter(this.value)"><option value="">All</option></select></div>
         <div class="form-group"><label>Team</label><select id="f-group" onchange="renderIssues();if(window._issueFilterState)window._issueFilterState.save();"><option value="">All teams</option><option value="unassigned">Unassigned</option></select></div>

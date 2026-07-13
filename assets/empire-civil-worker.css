@@ -219,6 +219,49 @@
   margin: 0 0 10px;
   font-size: 16px;
 }
+.worker-camera-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 140px;
+  margin: 10px 0 12px;
+  padding: 18px 14px;
+  border-radius: 16px;
+  border: 2px dashed var(--accent2);
+  background: var(--task-bg);
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.worker-camera-zone:active {
+  transform: scale(0.99);
+}
+.worker-camera-zone strong {
+  font-size: 15px;
+  color: var(--text);
+}
+.worker-camera-zone span {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.35;
+}
+.worker-camera-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.worker-camera-icon svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
 .worker-fix-preview {
   width: 100%;
   max-height: 200px;

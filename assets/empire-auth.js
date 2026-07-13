@@ -260,8 +260,8 @@ function empireAuthPageBoot(opts) {
   }
 
   if (loginPage) loginPage.classList.remove('show');
-  if (main) main.classList.add('show');
   if (typeof opts.onEnter === 'function') opts.onEnter();
+  else if (main) main.classList.add('show');
   return true;
 }
 

@@ -18,7 +18,7 @@ var TRASH_SHEET = 'Trash';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-13-civil-worker-assign';
+var SCRIPT_VERSION = '2026-07-13-civil-worker-multi-photo';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_TRADE_IDS = {pipes:1, painting:1, tiles:1, wood:1};
 var HSE_INSPECTOR = 'Evan Mansour';
@@ -1229,8 +1229,31 @@ function handleAssignCivilIssue(body, auth) {
   return {ok:false, error:'Issue not found'};
 }
 
+function normalizeFixedPhotos_(body) {
+  var urls = [];
+  if (body.fixedPhotos && body.fixedPhotos.length) {
+    for (var i = 0; i < body.fixedPhotos.length; i++) {
+      var u = String(body.fixedPhotos[i] || '').trim();
+      if (u) urls.push(u);
+    }
+  }
+  if (!urls.length) {
+    var raw = String(body.fixedPhoto || '').trim();
+    if (raw) {
+      var parts = raw.split('|');
+      for (var j = 0; j < parts.length; j++) {
+        var p = String(parts[j] || '').trim();
+        if (p) urls.push(p);
+      }
+    }
+  }
+  return urls;
+}
+
 function handleMarkFixed(body, sheetName, auth) {
-  if (!String(body.fixedPhoto || '').trim()) return {ok:false, error:'photo_required', message:'A completion photo is required.'};
+  var photos = normalizeFixedPhotos_(body);
+  if (!photos.length) return {ok:false, error:'photo_required', message:'A completion photo is required.'};
+  var stored = photos.join('|');
   var ss = getSS_();
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) return {ok:false,error:'Sheet not found'};
@@ -1251,7 +1274,7 @@ function handleMarkFixed(body, sheetName, auth) {
       }
       var fixedBy = String(body.username || '');
       if (role !== 'worker' && body.fixedByName) fixedBy = String(body.fixedByName || fixedBy);
-      sheet.getRange(i+1,10).setValue(body.fixedPhoto||'');
+      sheet.getRange(i+1,10).setValue(stored);
       sheet.getRange(i+1,11).setValue('fixed');
       sheet.getRange(i+1,14).setValue(fixedBy);
       sheet.getRange(i+1,15).setValue(new Date().toISOString());

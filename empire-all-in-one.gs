@@ -20,7 +20,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-14-push10';
+var SCRIPT_VERSION = '2026-07-14-push11';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -151,6 +151,8 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
     var action = body.action;
+    // Fast path: push token save must not wait on spreadsheet locks / password rechecks.
+    if (action === 'saveWorkerPushToken') return respond(handleSaveWorkerPushTokenFast_(body));
     if (action === 'login' || action === 'verifyLogin') return respond(handleLogin(body));
     if (action === 'getPerms') return respond(handleGetPerms(body));
     if (action === 'getSummary') return respond(handleGetSummary(body));
@@ -749,8 +751,7 @@ function verifyTokenSession_(token) {
   var chunkSize = 200;
   for (var endRow = lastRow; endRow >= 2; endRow -= chunkSize) {
     var startRow = Math.max(2, endRow - chunkSize + 1);
-    var numRows = endRow - startRow + 1;
-    var rows = tsheet.getRange(startRow, 1, numRows, 6).getValues();
+    var rows = tsheet.getRange(startRow, 1, endRow, 6).getValues();
     for (var j = rows.length - 1; j >= 0; j--) {
       var row = rows[j];
       if (String(row[0]) !== String(token)) continue;
@@ -1471,41 +1472,80 @@ function ensureWorkerPushSheet_(sheet) {
 function workerPushPropKey_(username) {
   return 'worker_push_' + String(username || '').trim().toLowerCase();
 }
-function syncWorkerPushTokenToSheet_(rec) {
+/** Cache-first auth for push save — never rewrites Tokens/Users sheets. */
+function verifyTokenForPushSave_(token) {
+  if (!token) return {ok:false, error:'No token'};
+  var cache = CacheService.getScriptCache();
+  var tkey = 'tok_' + Utilities.base64EncodeWebSafe(String(token)).slice(0, 40);
   try {
-    var ss = getSS_();
-    var sheet = ss.getSheetByName(WORKER_PUSH_SHEET) || ss.insertSheet(WORKER_PUSH_SHEET);
-    ensureWorkerPushSheet_(sheet);
-    var username = rec.username;
-    var lastRow = sheet.getLastRow();
-    for (var i = lastRow; i >= 2; i--) {
-      if (String(sheet.getRange(i, 1).getValue() || '').trim().toLowerCase() === username) {
-        sheet.getRange(i, 1, 1, 4).setValues([[username, rec.fcmToken, rec.platform, rec.updatedAt]]);
-        return;
+    var hit = cache.get(tkey);
+    if (hit) {
+      var cached = JSON.parse(hit);
+      if (cached && cached.ok !== false && cached.username) {
+        return {
+          ok: true,
+          username: cached.username,
+          role: String(cached.role || ''),
+          dept: String(cached.dept || '')
+        };
       }
     }
-    sheet.appendRow([username, rec.fcmToken, rec.platform, rec.updatedAt]);
-  } catch (e) { /* sheet mirror is optional */ }
-}
-function handleSaveWorkerPushToken(body, auth) {
+  } catch (e) {}
   try {
-    auth = enrichAuthRole_(auth || {});
-    if (String(auth.role || '').toLowerCase() !== 'worker') {
-      return {ok:false, error:'not_allowed', message:'Only worker accounts can register for push alerts.'};
+    var ss = getSS_();
+    var tsheet = ss.getSheetByName(TOKENS_SHEET);
+    if (!tsheet || tsheet.getLastRow() < 2) return {ok:false, error:'Not authenticated'};
+    var lastRow = tsheet.getLastRow();
+    var now = new Date().getTime();
+    var startRow = Math.max(2, lastRow - 199);
+    var rows = tsheet.getRange(startRow, 1, lastRow, 5).getValues();
+    for (var j = rows.length - 1; j >= 0; j--) {
+      if (String(rows[j][0]) !== String(token)) continue;
+      if (now - Number(rows[j][3]) > TOKEN_TTL) return {ok:false, error:'Token expired'};
+      var result = {
+        ok: true,
+        username: rows[j][1],
+        dept: String(rows[j][2] || '').trim().toLowerCase(),
+        role: String(rows[j][4] || '')
+      };
+      try { cache.put(tkey, JSON.stringify(result), 300); } catch (e2) {}
+      return result;
     }
-    var username = String((auth && auth.username) || '').trim().toLowerCase();
+    return {ok:false, error:'Invalid token'};
+  } catch (e) {
+    return {ok:false, error:'auth_failed', message:String(e && e.message ? e.message : e)};
+  }
+}
+function handleSaveWorkerPushTokenFast_(body) {
+  try {
+    var auth = verifyTokenForPushSave_(body && body.token);
+    if (!auth.ok) return auth;
+    var role = String(auth.role || '').toLowerCase();
+    if (role !== 'worker') {
+      return {ok:false, error:'not_allowed', message:'Only worker accounts can register for push alerts. Role=' + (role || 'empty')};
+    }
+    if (!tokenDeptAllows_(String(auth.dept || ''), 'civil issue')) {
+      return {ok:false, error:'This login is not allowed for this section'};
+    }
+    var username = String(auth.username || '').trim().toLowerCase();
     if (!username) return {ok:false, error:'not_authenticated'};
-    var fcmToken = String(body.fcmToken || body.pushToken || '').trim();
+    var fcmToken = String((body && (body.fcmToken || body.pushToken)) || '').trim();
     if (!fcmToken) return {ok:false, error:'missing_token', message:'Missing push token.'};
-    var platform = String(body.platform || 'web-fcm').trim();
+    var platform = String((body && body.platform) || 'web-fcm').trim();
     var now = new Date().toISOString();
     var rec = {username:username, fcmToken:fcmToken, platform:platform, updatedAt:now};
     PropertiesService.getScriptProperties().setProperty(workerPushPropKey_(username), JSON.stringify(rec));
-    syncWorkerPushTokenToSheet_(rec);
-    return {ok:true, success:true, updatedAt:now};
+    return {ok:true, success:true, updatedAt:now, version:SCRIPT_VERSION, storedAs:workerPushPropKey_(username)};
   } catch (e) {
-    return {ok:false, error:'save_failed', message:String(e && e.message ? e.message : e)};
+    return {ok:false, error:'save_failed', message:String(e && e.message ? e.message : e), version:SCRIPT_VERSION};
   }
+}
+function handleSaveWorkerPushToken(body, auth) {
+  return handleSaveWorkerPushTokenFast_({
+    token: body && body.token,
+    fcmToken: body && (body.fcmToken || body.pushToken),
+    platform: body && body.platform
+  });
 }
 function getWorkerPushTokens_(usernames) {
   var want = {};
@@ -2399,4 +2439,18 @@ function authorizePushSetup() {
   }
   var result = sendFcmToWorkerDetailed_(fcmToken, 'Empire test', 'Lock-screen push test from server.', {type: 'auth_test'});
   Logger.log('Push send: ' + JSON.stringify(result));
+}
+
+/** Run in editor to confirm push-token storage works (no phone needed). */
+function checkWorkerPushStorage() {
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties();
+  var found = [];
+  Object.keys(all).forEach(function (k) {
+    if (k.indexOf('worker_push_') === 0) found.push(k);
+  });
+  Logger.log('SCRIPT_VERSION=' + SCRIPT_VERSION);
+  Logger.log('worker_push keys: ' + (found.length ? found.join(', ') : '(none yet)'));
+  Logger.log('Open this URL in a browser to verify the LIVE deploy version:');
+  Logger.log('(Deploy → Manage deployments → copy Web app URL)');
 }

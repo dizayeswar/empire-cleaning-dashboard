@@ -85,8 +85,32 @@
     }
   }
 
+  function pingScriptVersion() {
+    return new Promise(function (resolve) {
+      var xhr = new XMLHttpRequest();
+      var timer = setTimeout(function () {
+        try { xhr.abort(); } catch (e) {}
+        resolve(null);
+      }, 12000);
+      xhr.open('GET', GOOGLE_SCRIPT_URL, true);
+      xhr.onload = function () {
+        clearTimeout(timer);
+        try { resolve(JSON.parse(xhr.responseText || '{}')); }
+        catch (e) { resolve(null); }
+      };
+      xhr.onerror = function () {
+        clearTimeout(timer);
+        resolve(null);
+      };
+      xhr.send();
+    });
+  }
+
   function postToScript(body, timeoutMs) {
-    timeoutMs = timeoutMs || 30000;
+    timeoutMs = timeoutMs || 25000;
+    if (typeof fetchJSONRetry === 'function') {
+      return fetchJSONRetry(body, 1, timeoutMs);
+    }
     var url = GOOGLE_SCRIPT_URL;
     var payload = JSON.stringify(body);
     return new Promise(function (resolve, reject) {
@@ -137,25 +161,33 @@
     var started = Date.now();
     var slowTimer = setInterval(function () {
       var sec = Math.round((Date.now() - started) / 1000);
-      if (sec >= 10) setWorkerPushStatus('Still saving… ' + sec + 's (Google server can be slow)');
-    }, 5000);
-    var payload = {
-      action: act,
-      fcmToken: fcmToken,
-      platform: 'web-fcm',
-      token: session
-    };
-    return postToScript(payload, 30000)
+      setWorkerPushStatus('Still saving… ' + sec + 's');
+    }, 3000);
+    setWorkerPushStatus('Checking server version…');
+    return pingScriptVersion()
+      .then(function (info) {
+        var ver = info && info.version ? String(info.version) : '';
+        if (ver && ver.indexOf('push11') === -1 && ver.indexOf('push10') === -1) {
+          setWorkerPushStatus('Backend old (' + ver + ') — redeploy Apps Script New version');
+          return false;
+        }
+        setWorkerPushStatus(ver ? ('Saving… backend ' + ver) : 'Saving token to server…');
+        return postToScript({
+          action: act,
+          fcmToken: fcmToken,
+          platform: 'web-fcm',
+          token: session
+        }, 25000);
+      })
       .then(function (d) {
+        if (d === false) return false;
         if (d && (d.ok || d.success)) {
           setWorkerPushStatus('Alerts enabled. Tap Send test, then lock your phone.');
           setWorkerPushBanner('', false);
           return true;
         }
         if (d && d.error === 'Unknown action') {
-          var redeploy = 'Could not register: redeploy Apps Script (New version) then try again.';
-          setWorkerPushStatus(redeploy);
-          setWorkerPushBanner(redeploy, false);
+          setWorkerPushStatus('Could not register: redeploy Apps Script (New version).');
           return false;
         }
         var err = 'Could not register: ' + ((d && (d.message || d.error)) || 'server error');

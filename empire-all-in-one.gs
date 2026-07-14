@@ -19,7 +19,7 @@ var WORKER_LOCATIONS_SHEET = 'WorkerLocations';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-14-multi-worker-assign';
+var SCRIPT_VERSION = '2026-07-14-assign-ui3';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;

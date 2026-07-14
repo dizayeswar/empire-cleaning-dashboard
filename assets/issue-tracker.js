@@ -1227,14 +1227,37 @@ function bulkAssignWorkersPickerHtml() {
   return '<div class="bulk-assign-workers" onclick="event.stopPropagation()">' + assignWorkersPickerHtml([], 'bulk-assign-worker-cb', 'bulk') + '</div>';
 }
 var _bulkAssignBtnState = 'idle';
+var _bulkAssignBtnResetTimer = null;
+function clearBulkAssignWorkerChecks() {
+  document.querySelectorAll('.bulk-assign-worker-cb').forEach(function (cb) { cb.checked = false; });
+}
+function scheduleBulkAssignBtnReset(ms) {
+  if (_bulkAssignBtnResetTimer) clearTimeout(_bulkAssignBtnResetTimer);
+  _bulkAssignBtnResetTimer = setTimeout(function () {
+    _bulkAssignBtnResetTimer = null;
+    _bulkAssignBtnState = 'idle';
+    if (issueSelectMode) renderIssues();
+  }, ms || 4000);
+}
 function bulkAssignBtnHtml(cnt) {
   var disabled = cnt ? '' : 'disabled style="opacity:0.55;"';
   var cls = 'bulk-assign-btn';
   var text = 'Assign workers';
-  if (_bulkAssignBtnState === 'saving') { cls += ' saving'; text = 'Assigning\u2026'; disabled = 'disabled'; }
-  else if (_bulkAssignBtnState === 'saved') { cls += ' saved'; text = 'Assigned'; }
-  else if (_bulkAssignBtnState === 'error') { cls += ' error'; text = 'Retry'; }
-  return '<button type="button" id="bulk-assign-btn" class="' + cls + '" onclick="assignSelectedIssues()" ' + disabled + '>' + text + '</button>';
+  var style = '';
+  if (_bulkAssignBtnState === 'saving') {
+    cls += ' saving';
+    text = 'Assigning\u2026';
+    disabled = 'disabled style="opacity:0.55;"';
+  } else if (_bulkAssignBtnState === 'saved') {
+    cls += ' saved';
+    text = 'Assigned';
+    style = ' style="background:#1d9e75 !important;color:#fff !important;border:none !important;"';
+  } else if (_bulkAssignBtnState === 'error') {
+    cls += ' error';
+    text = 'Retry';
+    style = ' style="background:#C5504F !important;color:#fff !important;border:none !important;"';
+  }
+  return '<button type="button" id="bulk-assign-btn" class="' + cls + '"' + style + ' onclick="assignSelectedIssues()" ' + disabled + '>' + text + '</button>';
 }
 function setBulkAssignBtnState(state) {
   _bulkAssignBtnState = state || 'idle';
@@ -1242,6 +1265,9 @@ function setBulkAssignBtnState(state) {
   if (!btn) return;
   btn.classList.remove('saving', 'saved', 'error');
   btn.disabled = false;
+  btn.style.background = '';
+  btn.style.color = '';
+  btn.style.border = '';
   if (state === 'saving') {
     btn.disabled = true;
     btn.textContent = 'Assigning\u2026';
@@ -1249,22 +1275,25 @@ function setBulkAssignBtnState(state) {
   } else if (state === 'saved') {
     btn.textContent = 'Assigned';
     btn.classList.add('saved');
-    setTimeout(function () {
-      _bulkAssignBtnState = 'idle';
-      var b = document.getElementById('bulk-assign-btn');
-      if (b) { b.classList.remove('saved'); b.textContent = 'Assign workers'; }
-    }, 2200);
+    btn.style.background = '#1d9e75';
+    btn.style.color = '#fff';
+    btn.style.border = 'none';
   } else if (state === 'error') {
     btn.textContent = 'Retry';
     btn.classList.add('error');
-    setTimeout(function () {
-      _bulkAssignBtnState = 'idle';
-      var b = document.getElementById('bulk-assign-btn');
-      if (b) { b.classList.remove('error'); b.textContent = 'Assign workers'; }
-    }, 2500);
+    btn.style.background = '#C5504F';
+    btn.style.color = '#fff';
+    btn.style.border = 'none';
   } else {
     btn.textContent = 'Assign workers';
   }
+}
+function finishBulkAssignSuccess() {
+  clearBulkAssignWorkerChecks();
+  writeIssuesCacheAsync(allIssues);
+  _bulkAssignBtnState = 'saved';
+  renderIssues();
+  scheduleBulkAssignBtnReset(4000);
 }
 function selectAllVisibleIssues(){ var ids=window._visibleIssueIds||[]; ids.forEach(function(id){ selectedIssueIds[id]=true; }); renderIssues(); }
 function assignIssueErrorMsg(e) {
@@ -1289,7 +1318,9 @@ function assignSelectedIssues() {
   var workersRequired = assignWorkersRequiredCount(workers);
   var group = civilWorkerTeamId(workers[0]);
   var label = workers.map(function (w) { return civilWorkerName(w); }).join(', ');
-  var note = workersRequired > 1 ? ' <span style="color:var(--c-warn,#b8860b);">(each worker must submit photos — ' + workersRequired + ' total)</span>' : '';
+  var note = workersRequired > 1
+    ? '<br><span style="color:var(--c-warn,#b8860b);">Each of the ' + workersRequired + ' workers must upload photos on their phone before this job is complete.</span>'
+    : '';
   uiConfirm('Assign <strong>' + ids.length + '</strong> issue(s) to <strong>' + label + '</strong>?' + note).then(function (ok) {
     if (!ok) return;
     var prev = {};
@@ -1336,8 +1367,7 @@ function assignSelectedIssues() {
         });
       }
       writeIssuesCacheAsync(allIssues);
-      setBulkAssignBtnState('saved');
-      requestAnimationFrame(function () { renderIssues(); setBulkAssignBtnState('saved'); });
+      finishBulkAssignSuccess();
     }).catch(function (e) {
       ids.forEach(function (id) {
         var it = allIssues.find(function (x) { return x.id === id; });
@@ -1350,8 +1380,10 @@ function assignSelectedIssues() {
         }
       });
       writeIssuesCacheAsync(allIssues);
+      _bulkAssignBtnState = 'error';
+      renderIssues();
       setBulkAssignBtnState('error');
-      requestAnimationFrame(function () { renderIssues(); setBulkAssignBtnState('error'); });
+      scheduleBulkAssignBtnReset(3500);
       alert('\u274C ' + assignIssueErrorMsg(e));
     });
   });
@@ -1374,7 +1406,10 @@ function issueSelectToolbarHtml() {
     h += '<button type="button" class="bulk-delete-btn" onclick="deleteSelectedIssues()" ' + (cnt ? '' : 'disabled style="opacity:0.55;"') + '>Delete selected</button>';
   }
   h += '</div>';
-  if (bulk) h += bulkAssignWorkersPickerHtml();
+  if (bulk) {
+    h += '<p class="assign-multi-hint">Assign 1 worker, or 2–4 workers — if more than one, <strong>each</strong> must upload photos on their phone before the job is complete.</p>';
+    h += bulkAssignWorkersPickerHtml();
+  }
   h += '<div class="issue-select-row">';
   h += '<button type="button" onclick="shareSelectedWhatsApp()" style="background:#25D366;color:#fff;border:none;padding:8px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px;' + (cnt ? '' : 'opacity:0.55;') + '" ' + (cnt ? '' : 'disabled') + '>' + whatsappIconHtml() + ' Share on WhatsApp</button>';
   h += '<button type="button" onclick="selectAllVisibleIssues()" style="padding:8px 14px;font-size:12px;">Select all</button>';

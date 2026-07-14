@@ -20,7 +20,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-14-push2';
+var SCRIPT_VERSION = '2026-07-14-push3';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -1555,27 +1555,67 @@ function fcmDataStrings_(data) {
   Object.keys(data).forEach(function (k) { out[k] = String(data[k]); });
   return out;
 }
+function buildFcmMessagePayload_(fcmToken, title, body, data) {
+  var icon = 'https://dizayeswar.github.io/Empire-General-Service/icons/icon-192.png';
+  var link = 'https://dizayeswar.github.io/Empire-General-Service/civil-issue.html';
+  var fcmData = fcmDataStrings_(data || {});
+  fcmData.title = String(title || 'New job assigned');
+  fcmData.body = String(body || '');
+  return {
+    message: {
+      token: fcmToken,
+      notification: { title: title, body: body },
+      data: fcmData,
+      webpush: {
+        headers: {
+          Urgency: 'high',
+          TTL: '86400'
+        },
+        notification: {
+          title: title,
+          body: body,
+          icon: icon,
+          badge: icon,
+          tag: 'empire-job',
+          renotify: true,
+          requireInteraction: true
+        },
+        fcm_options: { link: link }
+      },
+      android: {
+        priority: 'HIGH',
+        notification: {
+          icon: 'icon-192',
+          color: '#8d015d',
+          sound: 'default',
+          channel_id: 'empire_jobs',
+          notification_priority: 'PRIORITY_HIGH',
+          default_vibrate_timings: true
+        }
+      },
+      apns: {
+        headers: {
+          'apns-priority': '10',
+          'apns-push-type': 'alert'
+        },
+        payload: {
+          aps: {
+            alert: { title: title, body: body },
+            sound: 'default',
+            'mutable-content': 1
+          }
+        }
+      }
+    }
+  };
+}
 function sendFcmToWorkerDetailed_(fcmToken, title, body, data) {
   if (!fcmToken) return {ok:false, error:'missing_token'};
   var projectId = getFcmProjectId_();
   var accessToken = getFcmAccessToken_();
   if (projectId && accessToken) {
     try {
-      var payload = {
-        message: {
-          token: fcmToken,
-          notification: { title: title, body: body },
-          webpush: {
-            notification: {
-              icon: 'https://dizayeswar.github.io/Empire-General-Service/icons/icon-192.png'
-            },
-            fcm_options: {
-              link: 'https://dizayeswar.github.io/Empire-General-Service/civil-issue.html'
-            }
-          },
-          data: fcmDataStrings_(data)
-        }
-      };
+      var payload = buildFcmMessagePayload_(fcmToken, title, body, data);
       var resp = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + projectId + '/messages:send', {
         method: 'post',
         contentType: 'application/json',

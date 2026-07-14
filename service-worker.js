@@ -1,5 +1,5 @@
 /* Empire General Service — offline shell cache + worker push (Phase 5C) */
-var CACHE_VERSION = '2026-07-14-push2';
+var CACHE_VERSION = '2026-07-14-push3';
 var CACHE_NAME = 'empire-egs-' + CACHE_VERSION;
 
 var PRECACHE = [
@@ -40,7 +40,6 @@ var PRECACHE = [
 ];
 
 try {
-  importScripts('./config.js');
   importScripts('./assets/firebase-sw-config.js');
   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
@@ -48,35 +47,55 @@ try {
     firebase.initializeApp(FIREBASE_SW_CONFIG);
     firebase.messaging().onBackgroundMessage(function (payload) {
       var note = payload && payload.notification;
-      var title = (note && note.title) || 'New job assigned';
-      var body = (note && note.body) || '';
+      var data = payload && payload.data;
+      var title = (note && note.title) || (data && data.title) || 'New job assigned';
+      var body = (note && note.body) || (data && data.body) || '';
+      var icon = 'https://dizayeswar.github.io/Empire-General-Service/icons/icon-192.png';
       return self.registration.showNotification(title, {
         body: body,
-        icon: './icons/icon-192.png',
-        badge: './icons/icon-192.png',
-        data: { url: './civil-issue.html' },
+        icon: icon,
+        badge: icon,
+        data: { url: 'https://dizayeswar.github.io/Empire-General-Service/civil-issue.html' },
         tag: 'empire-job',
-        renotify: true
+        renotify: true,
+        requireInteraction: true
       });
     });
   }
 } catch (e) {}
 
+function showPushNotification_(title, body, url) {
+  var icon = 'https://dizayeswar.github.io/Empire-General-Service/icons/icon-192.png';
+  return self.registration.showNotification(title || 'New job assigned', {
+    body: body || '',
+    icon: icon,
+    badge: icon,
+    data: { url: url || 'https://dizayeswar.github.io/Empire-General-Service/civil-issue.html' },
+    tag: 'empire-job',
+    renotify: true,
+    requireInteraction: true
+  });
+}
+
 self.addEventListener('push', function (event) {
-  if (!event.data) return;
-  try {
-    var data = event.data.json();
-    var title = data.title || (data.notification && data.notification.title) || 'New job assigned';
-    var body = data.body || (data.notification && data.notification.body) || '';
-    event.waitUntil(self.registration.showNotification(title, {
-      body: body,
-      icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
-      data: { url: (data.url || './civil-issue.html') },
-      tag: 'empire-job',
-      renotify: true
-    }));
-  } catch (err) {}
+  var title = 'New job assigned';
+  var body = '';
+  var url = 'https://dizayeswar.github.io/Empire-General-Service/civil-issue.html';
+  if (event.data) {
+    try {
+      var data = event.data.json();
+      var note = data.notification || data;
+      title = data.title || (note && note.title) || title;
+      body = data.body || (note && note.body) || '';
+      if (data.data) {
+        title = data.data.title || title;
+        body = data.data.body || body;
+      }
+    } catch (err) {
+      try { body = event.data.text(); } catch (e2) {}
+    }
+  }
+  event.waitUntil(showPushNotification_(title, body, url));
 });
 
 self.addEventListener('notificationclick', function (event) {

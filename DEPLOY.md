@@ -95,7 +95,7 @@ Sheet tab: **Users**
 
 ### Civil issue assignment (individual workers)
 
-Engineers assign each open issue to **one or more named workers** (up to 4). Only those workers see the job in their mobile app. You can optionally require **each selected worker** to submit completion photos (2–4 workers).
+Engineers assign each open issue to **one or more named workers** (up to 4). Only those workers see the job in their mobile app. If **more than one** worker is assigned, **each** must submit completion photos — the job stays open until all assigned workers have uploaded.
 
 | Trade ID | Display name | Workers (Users sheet username = id slug) |
 |----------|--------------|------------------------------------------|

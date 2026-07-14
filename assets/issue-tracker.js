@@ -202,7 +202,11 @@ function assignWorkersPickerHtml(selectedIds, className, issueId) {
 function issueWorkersRequired(r) {
   if (!r) return 1;
   var n = Number(r.workersRequired);
-  return n >= 2 ? n : 1;
+  if (!n || n < 1) return 1;
+  return n > 4 ? 4 : Math.floor(n);
+}
+function assignWorkersRequiredCount(workers) {
+  return workers && workers.length ? workers.length : 1;
 }
 function issueMatchesTeamFilter(r, fg) {
   if (!fg) return true;
@@ -386,18 +390,6 @@ function issuePhotosSectionHtml(r) {
   h += '</div>';
   return h;
 }
-function workersRequiredFromAssignEl(id) {
-  var workers = readAssignWorkerChecks('assign-worker-cb', id);
-  var el = document.getElementById('assign-each-worker-' + id);
-  if (el && el.checked && workers.length >= 2) return workers.length;
-  return 1;
-}
-function bulkWorkersRequired() {
-  var workers = readAssignWorkerChecks('bulk-assign-worker-cb');
-  var el = document.getElementById('bulk-assign-each-worker');
-  if (el && el.checked && workers.length >= 2) return workers.length;
-  return 1;
-}
 function setAssignBtnState(id, state) {
   var btn = document.getElementById('assign-btn-' + id);
   if (!btn) return;
@@ -436,7 +428,7 @@ function assignIssue(id) {
     uiAlert('Select at most ' + maxAssignWorkers() + ' workers.');
     return;
   }
-  var workersRequired = workersRequiredFromAssignEl(id);
+  var workersRequired = assignWorkersRequiredCount(workers);
   var group = workers.length ? civilWorkerTeamId(workers[0]) : '';
   var it = allIssues.find(function (x) { return x.id === id; });
   var prevGroup = it ? (it.assignedGroup || '') : '';
@@ -460,7 +452,6 @@ function assignIssue(id) {
     assignedGroup: group,
     assignedWorkers: workers,
     workersRequired: workersRequired,
-    eachMustComplete: workersRequired > 1,
     token: issueToken() || ''
   }, 2, 90000)
     .then(function (d) {
@@ -913,7 +904,7 @@ function renderWorkerJobs() {
       ? '<img class="worker-job-thumb" src="' + r.photo + '" loading="lazy" alt="">'
       : '<div class="worker-job-thumb worker-job-thumb-empty">No photo</div>';
     var need = issueWorkersRequired(r);
-    var twoBadge = need >= 2 ? '<span class="workers-badge">' + issueWorkerDone(r) + '/' + need + ' workers</span>' : '';
+    var twoBadge = need > 1 ? '<span class="workers-badge">' + issueWorkerDone(r) + '/' + need + ' workers</span>' : '';
     return '<div class="worker-job-card" onclick="openWorkerJob(\'' + r.id + '\')">' + thumb
       + '<div class="worker-job-body"><div class="worker-job-ref">#' + issueRef(r.num) + twoBadge + '</div>'
       + '<div class="worker-job-type">' + r.issueType + '</div>'
@@ -939,8 +930,8 @@ function openWorkerJob(id) {
   var h = '<h2>' + r.issueType + '</h2><p class="loc">' + (projectNames[r.project] || r.project) + ' &middot; ' + locStr(r) + '</p>';
   if (r.note) h += '<p style="color:var(--text-soft);font-size:14px;margin-bottom:12px;"><strong>Note:</strong> ' + r.note + '</p>';
   var need = issueWorkersRequired(r);
-  if (need >= 2) {
-    h += '<p class="worker-two-note">This job needs <strong>' + need + ' workers</strong> to each take photos.' + (issueWorkerDone(r) ? (' <span>(' + issueWorkerDone(r) + ' already done)</span>') : '') + '</p>';
+  if (need > 1) {
+    h += '<p class="worker-two-note">This job needs <strong>' + need + ' workers</strong> to each take photos.' + (issueWorkerDone(r) ? (' <span>(' + issueWorkerDone(r) + '/' + need + ' already done)</span>') : '') + '</p>';
   }
   h += r.photo ? '<img class="worker-problem-img" src="' + r.photo + '" alt="Problem">' : '<p style="color:var(--text-faint);">No problem photo</p>';
   h += '<div class="worker-fix-section"><h3>' + checkIconHtml() + ' Complete this job</h3>';
@@ -1017,7 +1008,7 @@ function openWorkerJobDoneView(id) {
     h += '</div></div>';
   }
   var needDone = issueWorkersRequired(r);
-  if (needDone >= 2 && r.status !== 'fixed') {
+  if (needDone > 1 && r.status !== 'fixed') {
     h += '<p class="worker-two-note">Waiting for other workers to complete this job (' + issueWorkerDone(r) + '/' + needDone + ' done).</p>';
   }
   body.innerHTML = h;
@@ -1235,7 +1226,46 @@ function bulkAssignBlockedHint(){ if(canBulkAssignIssues()||!tradeGroups().lengt
 function bulkAssignWorkersPickerHtml() {
   return '<div class="bulk-assign-workers" onclick="event.stopPropagation()">' + assignWorkersPickerHtml([], 'bulk-assign-worker-cb', 'bulk') + '</div>';
 }
-function setBulkAssignBtnState(state){ var btn=document.getElementById('bulk-assign-btn'); if(!btn) return; btn.classList.remove('saving','saved','error'); if(state==='saving'){ btn.disabled=true; btn.textContent='Assigning\u2026'; btn.classList.add('saving'); } else if(state==='saved'){ btn.disabled=false; btn.textContent='Assigned'; btn.classList.add('saved'); setTimeout(function(){ setBulkAssignBtnState('idle'); }, 1800); } else if(state==='error'){ btn.disabled=false; btn.textContent='Retry'; btn.classList.add('error'); setTimeout(function(){ setBulkAssignBtnState('idle'); }, 2200); } else { btn.disabled=false; btn.textContent='Assign workers'; } }
+var _bulkAssignBtnState = 'idle';
+function bulkAssignBtnHtml(cnt) {
+  var disabled = cnt ? '' : 'disabled style="opacity:0.55;"';
+  var cls = 'bulk-assign-btn';
+  var text = 'Assign workers';
+  if (_bulkAssignBtnState === 'saving') { cls += ' saving'; text = 'Assigning\u2026'; disabled = 'disabled'; }
+  else if (_bulkAssignBtnState === 'saved') { cls += ' saved'; text = 'Assigned'; }
+  else if (_bulkAssignBtnState === 'error') { cls += ' error'; text = 'Retry'; }
+  return '<button type="button" id="bulk-assign-btn" class="' + cls + '" onclick="assignSelectedIssues()" ' + disabled + '>' + text + '</button>';
+}
+function setBulkAssignBtnState(state) {
+  _bulkAssignBtnState = state || 'idle';
+  var btn = document.getElementById('bulk-assign-btn');
+  if (!btn) return;
+  btn.classList.remove('saving', 'saved', 'error');
+  btn.disabled = false;
+  if (state === 'saving') {
+    btn.disabled = true;
+    btn.textContent = 'Assigning\u2026';
+    btn.classList.add('saving');
+  } else if (state === 'saved') {
+    btn.textContent = 'Assigned';
+    btn.classList.add('saved');
+    setTimeout(function () {
+      _bulkAssignBtnState = 'idle';
+      var b = document.getElementById('bulk-assign-btn');
+      if (b) { b.classList.remove('saved'); b.textContent = 'Assign workers'; }
+    }, 2200);
+  } else if (state === 'error') {
+    btn.textContent = 'Retry';
+    btn.classList.add('error');
+    setTimeout(function () {
+      _bulkAssignBtnState = 'idle';
+      var b = document.getElementById('bulk-assign-btn');
+      if (b) { b.classList.remove('error'); b.textContent = 'Assign workers'; }
+    }, 2500);
+  } else {
+    btn.textContent = 'Assign workers';
+  }
+}
 function selectAllVisibleIssues(){ var ids=window._visibleIssueIds||[]; ids.forEach(function(id){ selectedIssueIds[id]=true; }); renderIssues(); }
 function assignIssueErrorMsg(e) {
   var msg = (e && e.message) ? e.message : 'Assign failed';
@@ -1256,10 +1286,10 @@ function assignSelectedIssues() {
   var workers = readAssignWorkerChecks('bulk-assign-worker-cb');
   if (!workers.length) { alert('Select at least one worker.'); return; }
   if (workers.length > maxAssignWorkers()) { alert('Select at most ' + maxAssignWorkers() + ' workers.'); return; }
-  var workersRequired = bulkWorkersRequired();
+  var workersRequired = assignWorkersRequiredCount(workers);
   var group = civilWorkerTeamId(workers[0]);
   var label = workers.map(function (w) { return civilWorkerName(w); }).join(', ');
-  var note = workersRequired > 1 ? ' <span style="color:var(--c-warn,#b8860b);">(each must submit photos)</span>' : '';
+  var note = workersRequired > 1 ? ' <span style="color:var(--c-warn,#b8860b);">(each worker must submit photos — ' + workersRequired + ' total)</span>' : '';
   uiConfirm('Assign <strong>' + ids.length + '</strong> issue(s) to <strong>' + label + '</strong>?' + note).then(function (ok) {
     if (!ok) return;
     var prev = {};
@@ -1283,14 +1313,12 @@ function assignSelectedIssues() {
     });
     writeIssuesCacheAsync(allIssues);
     setBulkAssignBtnState('saving');
-    requestAnimationFrame(function () { renderIssues(); });
     fetchJSONRetry({
       action: ISSUE_CFG.actions.assign,
       ids: ids,
       assignedGroup: group,
       assignedWorkers: workers,
       workersRequired: workersRequired,
-      eachMustComplete: workersRequired > 1,
       token: issueToken() || ''
     }, 2, 90000).then(function (d) {
       if (d && d.ok === false) {
@@ -1309,7 +1337,7 @@ function assignSelectedIssues() {
       }
       writeIssuesCacheAsync(allIssues);
       setBulkAssignBtnState('saved');
-      requestAnimationFrame(function () { renderIssues(); });
+      requestAnimationFrame(function () { renderIssues(); setBulkAssignBtnState('saved'); });
     }).catch(function (e) {
       ids.forEach(function (id) {
         var it = allIssues.find(function (x) { return x.id === id; });
@@ -1323,8 +1351,8 @@ function assignSelectedIssues() {
       });
       writeIssuesCacheAsync(allIssues);
       setBulkAssignBtnState('error');
+      requestAnimationFrame(function () { renderIssues(); setBulkAssignBtnState('error'); });
       alert('\u274C ' + assignIssueErrorMsg(e));
-      requestAnimationFrame(function () { renderIssues(); });
     });
   });
 }
@@ -1338,8 +1366,7 @@ function issueSelectToolbarHtml() {
   }
   var h = '<div class="issue-select-bar issue-select-bar-active"><div class="issue-select-row"><span><strong>' + cnt + '</strong> selected</span>';
   if (bulk) {
-    h += '<button type="button" id="bulk-assign-btn" class="bulk-assign-btn" onclick="assignSelectedIssues()" ' + (cnt ? '' : 'disabled style="opacity:0.55;"') + '>Assign workers</button>';
-    h += '<label class="assign-each-worker"><input type="checkbox" id="bulk-assign-each-worker"> Each selected worker must submit photos</label>';
+    h += bulkAssignBtnHtml(cnt);
   } else {
     h += bulkAssignBlockedHint();
   }
@@ -1485,12 +1512,10 @@ function durationStr(a,b){ if(!a||!b) return ''; const pr=s=>new Date(String(s).
 function assignBoxHtml(r) {
   if (!tradeGroups().length || PAGEPERMS.assign === false || !civilWorkersRoster()) return '';
   var selected = assignedWorkersList(r);
-  var eachChecked = issueWorkersRequired(r) >= 2 && selected.length >= 2 ? ' checked' : '';
   var h = '<div class="assign-box" onclick="event.stopPropagation()">';
-  h += '<label>Assign to worker(s) — pick up to ' + maxAssignWorkers() + '</label>';
+  h += '<label>Assign worker(s) — up to ' + maxAssignWorkers() + '. If you pick more than one, <strong>each</strong> must submit photos before the job is complete.</label>';
   h += assignWorkersPickerHtml(selected, 'assign-worker-cb', r.id);
   h += '<div class="assign-row assign-save-row"><button type="button" id="assign-btn-' + r.id + '" class="assign-save-btn" onclick="assignIssue(\'' + r.id + '\')">Save assignment</button></div>';
-  h += '<label class="assign-each-worker"><input type="checkbox" id="assign-each-worker-' + r.id + '"' + eachChecked + '> Each selected worker must submit photos (2–4 workers)</label>';
   h += '</div>';
   return h;
 }

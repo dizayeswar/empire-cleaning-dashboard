@@ -19,7 +19,7 @@ var WORKER_LOCATIONS_SHEET = 'WorkerLocations';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-14-bulk-delete-rb';
+var SCRIPT_VERSION = '2026-07-14-multi-worker-assign';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -399,9 +399,13 @@ function primaryTeamForWorkers_(workerIds) {
   }
   return '';
 }
+function assignWorkersRequiredCount_(workers) {
+  return workers && workers.length ? workers.length : 1;
+}
 function parseWorkersRequired_(raw) {
-  var n = Number(raw || 1);
-  return n >= 2 ? 2 : 1;
+  var n = Math.floor(Number(raw || 1));
+  if (!n || n < 1) return 1;
+  return n > 4 ? 4 : n;
 }
 function parseWorkerCompletions_(raw) {
   raw = String(raw || '').trim();
@@ -1433,11 +1437,9 @@ function handleAssignCivilIssue(body, auth) {
     idList.push(String(body.id));
   }
   if (!idList.length) return {ok:false, error:'missing_id', message:'Select at least one issue.'};
-  var workersRequired = body.workersRequired !== undefined && body.workersRequired !== null && body.workersRequired !== ''
-    ? parseWorkersRequired_(body.workersRequired)
-    : null;
-  if (workersRequired === null && body.eachMustComplete && assignedWorkers.length >= 2) {
-    workersRequired = assignedWorkers.length;
+  var workersRequired = assignWorkersRequiredCount_(assignedWorkers);
+  if (body.workersRequired !== undefined && body.workersRequired !== null && body.workersRequired !== '') {
+    workersRequired = parseWorkersRequired_(body.workersRequired);
   }
   var ss = getSS_();
   var sheet = ss.getSheetByName(CIVIL_SHEET);
@@ -1453,7 +1455,6 @@ function handleAssignCivilIssue(body, auth) {
       sheet.getRange(i + 1, CIVIL_ASSIGNED_COL).setValue(group);
       sheet.getRange(i + 1, CIVIL_ASSIGNED_WORKERS_COL).setValue(formatAssignedWorkers_(assignedWorkers));
       if (workersRequired !== null || assignedWorkers.length) {
-        if (workersRequired === null) workersRequired = assignedWorkers.length >= 2 && body.eachMustComplete ? assignedWorkers.length : 1;
         sheet.getRange(i + 1, CIVIL_WORKERS_REQUIRED_COL).setValue(workersRequired);
         sheet.getRange(i + 1, CIVIL_WORKER_COMPLETIONS_COL).setValue('');
         sheet.getRange(i + 1, 10).setValue('');
@@ -1629,7 +1630,7 @@ function handleMarkFixed(body, sheetName, auth) {
         sheet.getRange(i+1, CIVIL_WORKER_COMPLETIONS_COL).setValue(formatWorkerCompletions_(completions));
         var allPhotos = mergeWorkerCompletionPhotos_(completions);
         sheet.getRange(i+1,10).setValue(formatFixedPhotosForStorage_(allPhotos));
-        if (workersRequired >= 2 && completions.length < workersRequired) {
+        if (completions.length < workersRequired) {
           sheet.getRange(i+1,14).setValue(fixedBy + ' (' + completions.length + '/' + workersRequired + ')');
           invalidateIssuesCache_(sheetName);
           return {ok:true, success:true, partial:true, workerDone:completions.length, workersRequired:workersRequired, workerCompletions:completions};

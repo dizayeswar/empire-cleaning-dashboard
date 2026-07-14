@@ -1318,10 +1318,10 @@ function assignSelectedIssues() {
   var workersRequired = assignWorkersRequiredCount(workers);
   var group = civilWorkerTeamId(workers[0]);
   var label = workers.map(function (w) { return civilWorkerName(w); }).join(', ');
-  var note = workersRequired > 1
-    ? '<br><span style="color:var(--c-warn,#b8860b);">Each of the ' + workersRequired + ' workers must upload photos on their phone before this job is complete.</span>'
-    : '';
-  uiConfirm('Assign <strong>' + ids.length + '</strong> issue(s) to <strong>' + label + '</strong>?' + note).then(function (ok) {
+  var confirmMsg = ids.length === 1
+    ? 'Are you sure you want to assign to ' + label + '?'
+    : 'Are you sure you want to assign ' + ids.length + ' issues to ' + label + '?';
+  uiConfirm(confirmMsg).then(function (ok) {
     if (!ok) return;
     var prev = {};
     ids.forEach(function (id) {

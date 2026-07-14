@@ -19,7 +19,7 @@ var WORKER_LOCATIONS_SHEET = 'WorkerLocations';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-14-civil-worker-assign';
+var SCRIPT_VERSION = '2026-07-14-bulk-delete-rb';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -1862,16 +1862,54 @@ function handleGetTrash(body) {
   for (var i=1;i<rows.length;i++) {
     var src = String(rows[i][1]);
     if (filter && filter.indexOf(src)===-1) continue;
-    var preview = '';
+    var preview = '', meta = {};
     try {
-      var arr = JSON.parse(rows[i][2]); var parts=[];
-      for (var j=1;j<arr.length;j++){ var v=arr[j]; if(v!==''&&v!=null){ var sv=String(v); if(sv.indexOf('http')===0) sv='[photo]'; parts.push(sv); } }
-      preview = parts.slice(0,5).join('  ·  ');
+      var arr = JSON.parse(rows[i][2]);
+      meta = trashIssueMetaFromRow_(src, arr);
+      var parts = [];
+      if (meta.num) parts.push('#' + meta.num);
+      if (meta.issueType) parts.push(meta.issueType);
+      if (meta.building || meta.floor) parts.push((meta.building||'') + '-' + (meta.floor||''));
+      if (parts.length) preview = parts.join('  ·  ');
+      else {
+        for (var j=1;j<arr.length;j++){ var v=arr[j]; if(v!==''&&v!=null){ var sv=String(v); if(sv.indexOf('http')===0) sv='[photo]'; parts.push(sv); } }
+        preview = parts.slice(0,5).join('  ·  ');
+      }
     } catch(e) {}
-    out.push({trashId:String(rows[i][0]), sourceSheet:src, preview:preview, deletedBy:String(rows[i][3]||''), deletedAt:String(rows[i][4]||''), reason:String(rows[i][5]||''), batchId:String(rows[i][6]||'')});
+    var item = {trashId:String(rows[i][0]), sourceSheet:src, preview:preview, deletedBy:String(rows[i][3]||''), deletedAt:String(rows[i][4]||''), reason:String(rows[i][5]||''), batchId:String(rows[i][6]||'')};
+    if (meta.num) item.num = meta.num;
+    if (meta.issueType) item.issueType = meta.issueType;
+    if (meta.building) item.building = meta.building;
+    if (meta.floor) item.floor = meta.floor;
+    if (meta.spot) item.spot = meta.spot;
+    if (meta.project) item.project = meta.project;
+    if (meta.photo) item.photo = meta.photo;
+    if (meta.fixedPhoto) item.fixedPhoto = meta.fixedPhoto;
+    if (meta.status) item.status = meta.status;
+    out.push(item);
   }
   out.reverse();
   return out;
+}
+
+function trashIssueMetaFromRow_(sourceSheet, arr) {
+  if (!arr || !arr.length) return {};
+  if (sourceSheet !== CIVIL_SHEET && sourceSheet !== ELECTRIC_SHEET && sourceSheet !== FIRE_SHEET) return {};
+  var photo = String(arr[8] || '');
+  var fixedRaw = String(arr[9] || '');
+  var fixedPhoto = fixedRaw.indexOf('http') === 0 ? fixedRaw : '';
+  return {
+    id: String(arr[0] || ''),
+    project: String(arr[1] || ''),
+    building: String(arr[2] || ''),
+    floor: String(arr[3] || ''),
+    spot: String(arr[4] || ''),
+    issueType: String(arr[5] || ''),
+    photo: photo.indexOf('http') === 0 ? photo : '',
+    fixedPhoto: fixedPhoto,
+    status: String(arr[10] || ''),
+    num: Number(arr[ISSUE_NUM_COL - 1] || 0) || 0
+  };
 }
 
 function handleRestoreTrash(body) {
@@ -1882,16 +1920,25 @@ function handleRestoreTrash(body) {
   var batchId = body.batchId || null;
   var sheets = body.sheets || null;
   var rows = t.getDataRange().getValues();
-  var toDelete = [], restored = 0;
+  var toDelete = [], restored = 0, restoredSheets = {};
   for (var i=1;i<rows.length;i++) {
     var src = String(rows[i][1]); var match=false;
     if (ids) match = ids.indexOf(String(rows[i][0]))!==-1;
     else if (batchId) match = String(rows[i][6])===batchId;
     else if (sheets) match = sheets.indexOf(src)!==-1;
     if (!match) continue;
-    try { var arr = JSON.parse(rows[i][2]); var dst = ss.getSheetByName(src) || ss.insertSheet(src); dst.appendRow(arr); restored++; toDelete.push(i+1); } catch(e) {}
+    try {
+      var arr = JSON.parse(rows[i][2]);
+      var dst = ss.getSheetByName(src) || ss.insertSheet(src);
+      if (src === CIVIL_SHEET) ensureCivilIssueHeaders_(dst);
+      dst.appendRow(arr);
+      restored++;
+      restoredSheets[src] = true;
+      toDelete.push(i+1);
+    } catch(e) {}
   }
   toDelete.sort(function(a,b){return b-a;}).forEach(function(r){ t.deleteRow(r); });
+  Object.keys(restoredSheets).forEach(function(s){ invalidateIssuesCache_(s); });
   return {ok:true,success:true,restored:restored};
 }
 
@@ -1932,9 +1979,21 @@ function handleDeleteIssue(body, sheetName) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) return {ok:false,error:'Sheet not found'};
+  var ids = body.ids && body.ids.length ? body.ids : (body.id ? [body.id] : []);
+  if (!ids.length) return {ok:false,error:'No id'};
+  var idSet = {};
+  for (var k = 0; k < ids.length; k++) idSet[String(ids[k])] = true;
   var rows = sheet.getDataRange().getValues();
+  var toTrash = [], toDeleteRows = [];
   for (var i=1;i<rows.length;i++) {
-    if (String(rows[i][0])===String(body.id)) { trashRows_(sheetName,[rows[i]],'delete',body.username); sheet.deleteRow(i+1); invalidateIssuesCache_(sheetName); return {ok:true,success:true}; }
+    if (idSet[String(rows[i][0])]) {
+      toTrash.push(rows[i]);
+      toDeleteRows.push(i+1);
+    }
   }
-  return {ok:false,error:'Issue not found'};
+  if (!toTrash.length) return {ok:false,error:'Issue not found'};
+  trashRows_(sheetName, toTrash, 'delete', body.username);
+  toDeleteRows.sort(function(a,b){return b-a;}).forEach(function(r){ sheet.deleteRow(r); });
+  invalidateIssuesCache_(sheetName);
+  return {ok:true,success:true,deleted:toTrash.length};
 }

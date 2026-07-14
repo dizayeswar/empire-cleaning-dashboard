@@ -1236,7 +1236,7 @@ function bulkAssignWorkersPickerHtml() {
   return '<div class="bulk-assign-workers" onclick="event.stopPropagation()">' + assignWorkersPickerHtml([], 'bulk-assign-worker-cb', 'bulk') + '</div>';
 }
 function setBulkAssignBtnState(state){ var btn=document.getElementById('bulk-assign-btn'); if(!btn) return; btn.classList.remove('saving','saved','error'); if(state==='saving'){ btn.disabled=true; btn.textContent='Assigning\u2026'; btn.classList.add('saving'); } else if(state==='saved'){ btn.disabled=false; btn.textContent='Assigned'; btn.classList.add('saved'); setTimeout(function(){ setBulkAssignBtnState('idle'); }, 1800); } else if(state==='error'){ btn.disabled=false; btn.textContent='Retry'; btn.classList.add('error'); setTimeout(function(){ setBulkAssignBtnState('idle'); }, 2200); } else { btn.disabled=false; btn.textContent='Assign workers'; } }
-function selectAllVisibleIssues(){ var ids=window._visibleIssueIds||[]; ids.forEach(function(id){ var it=allIssues.find(function(x){ return x.id===id; }); if(it&&it.status!=='fixed') selectedIssueIds[id]=true; }); renderIssues(); }
+function selectAllVisibleIssues(){ var ids=window._visibleIssueIds||[]; ids.forEach(function(id){ selectedIssueIds[id]=true; }); renderIssues(); }
 function assignIssueErrorMsg(e) {
   var msg = (e && e.message) ? e.message : 'Assign failed';
   if (/unknown action|invalid server response/i.test(msg)) {
@@ -1247,8 +1247,11 @@ function assignIssueErrorMsg(e) {
   return msg;
 }
 function assignSelectedIssues() {
-  var ids = Object.keys(selectedIssueIds);
-  if (!ids.length) { alert('Select at least one issue first.'); return; }
+  var ids = Object.keys(selectedIssueIds).filter(function (id) {
+    var it = allIssues.find(function (x) { return x.id === id; });
+    return it && it.status !== 'fixed';
+  });
+  if (!ids.length) { alert('Select at least one open issue first.'); return; }
   if (!canBulkAssignIssues()) return;
   var workers = readAssignWorkerChecks('bulk-assign-worker-cb');
   if (!workers.length) { alert('Select at least one worker.'); return; }
@@ -1328,7 +1331,8 @@ function assignSelectedIssues() {
 function issueSelectToolbarHtml() {
   var cnt = selectedIssueCount();
   var bulk = canBulkAssignIssues();
-  var hint = bulk ? 'Select issues, pick workers below (up to 4), then assign or share.' : 'Tap cards to pick several, then share on WhatsApp.';
+  var canDel = canBulkDeleteIssues();
+  var hint = 'Select issues, then assign workers, delete, or share on WhatsApp.';
   if (!issueSelectMode) {
     return '<div class="issue-select-bar"><span>' + hint + '</span><button type="button" onclick="toggleIssueSelectMode()" style="padding:8px 14px;font-size:12px;margin-left:auto;">Select issues</button></div>';
   }
@@ -1338,6 +1342,9 @@ function issueSelectToolbarHtml() {
     h += '<label class="assign-each-worker"><input type="checkbox" id="bulk-assign-each-worker"> Each selected worker must submit photos</label>';
   } else {
     h += bulkAssignBlockedHint();
+  }
+  if (canDel) {
+    h += '<button type="button" class="bulk-delete-btn" onclick="deleteSelectedIssues()" ' + (cnt ? '' : 'disabled style="opacity:0.55;"') + '>Delete selected</button>';
   }
   h += '</div>';
   if (bulk) h += bulkAssignWorkersPickerHtml();
@@ -1414,7 +1421,35 @@ function loadIssues(force){ force=!!force; if(isCivilWorker()&&force) sendWorker
 function locStr(r){ return r.building+' \u00B7 '+r.floor+' \u00B7 '+r.spot; }
 function dayOf(r){ var d=String(r.date||r.createdAt||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); var dt=new Date(d.replace(' ','T')); if(!isNaN(dt.getTime())){ var z=function(n){return String(n).padStart(2,'0');}; return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate()); } return ''; }
 function monthOf(r){ var d=String(r.date||r.createdAt||''); if(!/^\d{4}-\d{2}-\d{2}/.test(d)) return ''; var yr=parseInt(d.slice(0,4),10), mo=parseInt(d.slice(5,7),10), dy=parseInt(d.slice(8,10),10); if(dy>=26){ mo+=1; if(mo>12){mo=1;yr+=1;} } return yr+'-'+String(mo).padStart(2,'0'); }
-function removeIssue(id){ uiConfirm('Delete this issue? It will go to the Recycle Bin.').then(function(ok){ if(!ok)return; fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:ISSUE_CFG.actions.delete,id:id,token:issueToken()||''})}).then(function(r){return r.json();}).then(function(d){ if(d&&(d.ok||d.success)){ allIssues=allIssues.filter(function(x){return x.id!==id;}); renderIssues(); renderAnalytics(); } else { alert('\u274C '+((d&&(d.error||d.message))||'Delete failed')); } }).catch(function(e){ alert('\u274C '+e.message); }); }); }
+function canBulkDeleteIssues() {
+  return !isCivilWorker() && PAGEPERMS.del !== false;
+}
+function deleteSelectedIssues() {
+  var ids = Object.keys(selectedIssueIds);
+  if (!ids.length) { alert('Select at least one issue first.'); return; }
+  if (!canBulkDeleteIssues()) { alert('You do not have permission to delete.'); return; }
+  uiConfirm('Delete <strong>' + ids.length + '</strong> issue(s)? They will go to the Recycle Bin.').then(function (ok) {
+    if (!ok) return;
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: ISSUE_CFG.actions.delete, ids: ids, token: issueToken() || '' })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.ok === false) {
+        if (empireAuthHandleInvalidSession_(d, issueSessionLogoutOpts())) return;
+        throw new Error(d.message || d.error || 'Delete failed');
+      }
+      if (!(d && (d.ok || d.success))) throw new Error((d && (d.error || d.message)) || 'Delete failed');
+      var idSet = {};
+      ids.forEach(function (id) { idSet[id] = true; });
+      allIssues = allIssues.filter(function (x) { return !idSet[x.id]; });
+      selectedIssueIds = {};
+      writeIssuesCacheAsync(allIssues);
+      renderIssues();
+      renderAnalytics();
+    }).catch(function (e) { alert('\u274C ' + e.message); });
+  });
+}
+function removeIssue(id){ uiConfirm('Delete this issue? It will go to the Recycle Bin.').then(function(ok){ if(!ok)return; fetch(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify({action:ISSUE_CFG.actions.delete,ids:[id],token:issueToken()||''})}).then(function(r){return r.json();}).then(function(d){ if(d&&(d.ok||d.success)){ allIssues=allIssues.filter(function(x){return x.id!==id;}); renderIssues(); renderAnalytics(); } else { alert('\u274C '+((d&&(d.error||d.message))||'Delete failed')); } }).catch(function(e){ alert('\u274C '+e.message); }); }); }
 function editIssue(id){ var r=allIssues.find(function(x){return x.id===id;}); if(!r) return; switchTabTo('add'); window._editingId=id;
   var pj=document.getElementById('ci-project'); if(pj) pj.value=r.project||''; updateCIBuildings();
   var bd=document.getElementById('ci-building'); if(bd) bd.value=r.building||''; updateCIFloors();

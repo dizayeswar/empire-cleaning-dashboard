@@ -1,5 +1,5 @@
 /* Empire General Service — offline shell cache (Phase 5C) */
-var CACHE_VERSION = '2026-07-14-civil-worker-assign';
+var CACHE_VERSION = '2026-07-14-bulk-delete-rb';
 var CACHE_NAME = 'empire-egs-' + CACHE_VERSION;
 
 var PRECACHE = [
@@ -33,7 +33,8 @@ var PRECACHE = [
   './assets/empire-pwa.js',
   './assets/issue-tracker.js',
   './assets/issue-excel-export.js',
-  './assets/issue-configs.js'
+  './assets/issue-configs.js',
+  './assets/issue-recycle-bin.js'
 ];
 
 self.addEventListener('install', function (event) {

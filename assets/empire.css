@@ -228,3 +228,23 @@ select, ::picker(select) { appearance: base-select; }
 select option { padding:10px 12px; border-radius:10px; font-weight:600; font-size:var(--fs-body); background:var(--input-bg,#fff); color:var(--text,#232a3d); }
 select option:hover, select option:focus { background:#8d015d; color:#fff; }
 select option:checked { background:rgba(141,1,93,0.14); }
+
+/* Issue recycle bin + bulk delete (civil / electric / fire) */
+.bulk-delete-btn { padding:8px 14px; font-size:12px; font-weight:600; border-radius:50px; border:none; cursor:pointer; color:#fff; background:#C5504F; }
+.bulk-delete-btn:disabled { opacity:0.55; cursor:not-allowed; }
+.rb-items { display:flex; flex-direction:column; gap:10px; }
+.rb-item { display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border:1px solid var(--table-border); border-radius:12px; background:var(--task-bg); }
+.rb-thumb { width:72px; height:72px; object-fit:cover; border-radius:8px; flex-shrink:0; cursor:pointer; border:1px solid var(--card-border); }
+.rb-thumb-empty { display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-faint); background:var(--panel); }
+.rb-body { flex:1; min-width:0; }
+.rb-title { font-weight:600; font-size:13px; line-height:1.35; margin-bottom:4px; }
+.rb-ref { color:var(--text-faint); font-weight:700; }
+.rb-loc { font-size:12px; color:var(--text-soft); margin-bottom:4px; }
+.rb-meta { font-size:11px; color:var(--text-faint); }
+.rb-how.reset { color:#C5734F; font-weight:600; }
+.rb-status { font-size:10px; font-weight:700; padding:2px 6px; border-radius:999px; vertical-align:middle; }
+.rb-status.open { background:#fff3e0; color:#b8860b; }
+.rb-status.fixed { background:#e8f8ef; color:#1d9e75; }
+.rb-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+.rb-restore { padding:6px 10px; font-size:12px; color:#fff; background:#1d9e75; border:none; border-radius:8px; cursor:pointer; white-space:nowrap; }
+.rb-purge { padding:6px 10px; font-size:12px; color:#fff; background:#C5504F; border:none; border-radius:8px; cursor:pointer; }

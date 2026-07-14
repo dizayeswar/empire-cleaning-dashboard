@@ -40,7 +40,15 @@ function parseFixedPhotos(fp) {
   return fp.indexOf('http') === 0 ? [fp] : [];
 }
 function joinFixedPhotos(urls) {
-  return JSON.stringify((urls || []).filter(Boolean));
+  return JSON.stringify(normalizePhotoUrls(urls));
+}
+function normalizePhotoUrls(urls) {
+  return (urls || []).map(function (u) {
+    return typeof u === 'string' ? u : (u && u.url) || '';
+  }).filter(Boolean);
+}
+function isOfflinePhotoUrl(url) {
+  return String(url || '').indexOf('data:') === 0;
 }
 function issueFixedPhotos(r) {
   if (!r) return [];
@@ -99,7 +107,9 @@ function issueWorkerDone(r) {
   return (r.workerCompletions && r.workerCompletions.length) || 0;
 }
 function workerCompletedByMe(r) {
-  if (!r || !r.workerCompletions || !r.workerCompletions.length) return false;
+  if (!r) return false;
+  if (workerHasPendingOfflineFix(r)) return true;
+  if (!r.workerCompletions || !r.workerCompletions.length) return false;
   var user = String(empireGetUser() || '').trim().toLowerCase();
   if (!user) return false;
   for (var i = 0; i < r.workerCompletions.length; i++) {
@@ -354,7 +364,153 @@ function enterWorkerApp() {
   var user = empireGetUser() || '';
   var teamLabel = tradeGroupLabel(trade);
   if (title) title.textContent = user + ' (' + teamLabel + ' team)';
+  initWorkerOfflineSync();
   setTimeout(function () { loadIssues(false); }, 0);
+}
+var _workerOfflineQueuedIds = {};
+var _workerOfflineSyncRunning = false;
+var WORKER_OFFLINE_PENDING_KEY = function () { return ISSUE_CFG.prefix + '_worker_offline_pending'; };
+function workerHasPendingOfflineFix(r) {
+  return !!(r && _workerOfflineQueuedIds[r.id]);
+}
+function saveWorkerOfflinePendingMap() {
+  try { localStorage.setItem(WORKER_OFFLINE_PENDING_KEY(), JSON.stringify(_workerOfflineQueuedIds)); } catch (e) {}
+}
+function offlineWorkerFixId() {
+  return 'wfix-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+function uploadToImgbbAsync(blob) {
+  return new Promise(function (resolve) { uploadToImgbb(blob, resolve); });
+}
+async function workerOfflineQueueCount() {
+  if (typeof empireOfflineQueueAll !== 'function') return 0;
+  var rows = await empireOfflineQueueAll();
+  return rows.filter(function (r) {
+    return r.type === 'worker_issue_fix' && r.dept === ISSUE_CFG.dept;
+  }).length;
+}
+async function refreshWorkerOfflineBanner() {
+  if (!isCivilWorker() || typeof empireOfflineSetBanner !== 'function') return;
+  var n = await workerOfflineQueueCount();
+  empireOfflineSetBanner(n, function () { syncWorkerOfflineFixes(false); });
+}
+async function restoreWorkerOfflineQueueState() {
+  _workerOfflineQueuedIds = {};
+  try {
+    var raw = localStorage.getItem(WORKER_OFFLINE_PENDING_KEY());
+    if (raw) _workerOfflineQueuedIds = JSON.parse(raw) || {};
+  } catch (e) { _workerOfflineQueuedIds = {}; }
+  if (typeof empireOfflineQueueAll !== 'function') return;
+  var rows = await empireOfflineQueueAll();
+  var user = String(empireGetUser() || '').trim().toLowerCase();
+  rows.filter(function (r) {
+    return r.type === 'worker_issue_fix' && r.dept === ISSUE_CFG.dept && (!r.user || String(r.user).toLowerCase() === user);
+  }).forEach(function (r) {
+    _workerOfflineQueuedIds[r.issueId] = { queueId: r.id, at: r.createdAt || Date.now() };
+  });
+  saveWorkerOfflinePendingMap();
+}
+async function enqueueWorkerFixOffline(issueId, note, photos) {
+  if (typeof empireOfflineQueuePut !== 'function') throw new Error('Offline queue not available');
+  var remoteUrls = [];
+  var imageDataUrls = [];
+  normalizePhotoUrls(photos).forEach(function (url) {
+    if (isOfflinePhotoUrl(url)) imageDataUrls.push(url);
+    else if (url.indexOf('http') === 0) remoteUrls.push(url);
+  });
+  if (!remoteUrls.length && !imageDataUrls.length) throw new Error('No photos to save');
+  var id = offlineWorkerFixId();
+  await empireOfflineQueuePut({
+    id: id,
+    type: 'worker_issue_fix',
+    dept: ISSUE_CFG.dept,
+    issueId: issueId,
+    fixNote: note || '',
+    imageDataUrls: imageDataUrls,
+    remoteUrls: remoteUrls,
+    user: empireGetUser() || '',
+    createdAt: Date.now()
+  });
+  _workerOfflineQueuedIds[issueId] = { queueId: id, at: Date.now() };
+  saveWorkerOfflinePendingMap();
+  await refreshWorkerOfflineBanner();
+  return id;
+}
+function markWorkerFixQueuedLocally(id) {
+  if (!_workerOfflineQueuedIds[id]) _workerOfflineQueuedIds[id] = { at: Date.now() };
+  saveWorkerOfflinePendingMap();
+}
+async function syncWorkerOfflineFixes(silent) {
+  if (_workerOfflineSyncRunning) return;
+  if (!navigator.onLine) {
+    if (!silent) uiAlert('No connection — your fix will upload when you have signal.');
+    return;
+  }
+  if (typeof empireOfflineQueueAll !== 'function') return;
+  _workerOfflineSyncRunning = true;
+  var synced = 0;
+  try {
+    var rows = await empireOfflineQueueAll();
+    var items = rows.filter(function (r) { return r.type === 'worker_issue_fix' && r.dept === ISSUE_CFG.dept; });
+    for (var qi = 0; qi < items.length; qi++) {
+      var item = items[qi];
+      try {
+        var remoteUrls = (item.remoteUrls || []).slice();
+        var dataUrls = item.imageDataUrls || [];
+        for (var bi = 0; bi < dataUrls.length; bi++) {
+          var blob = empireOfflineDataUrlToBlob(dataUrls[bi]);
+          if (!blob) throw new Error('Invalid saved image');
+          var url = await uploadToImgbbAsync(blob);
+          if (!url) throw new Error('Photo upload failed');
+          remoteUrls.push(url);
+        }
+        if (!remoteUrls.length) throw new Error('No photos to upload');
+        var d = await fetchJSONRetry({
+          action: ISSUE_CFG.actions.markFixed,
+          id: item.issueId,
+          fixedPhoto: joinFixedPhotos(remoteUrls),
+          fixedPhotos: remoteUrls,
+          fixNote: item.fixNote || '',
+          token: issueToken() || ''
+        }, 3);
+        if (d && d.ok === false) {
+          if (empireAuthHandleInvalidSession_(d, issueSessionLogoutOpts())) return;
+          throw new Error(d.message || d.error || 'Could not save fix');
+        }
+        delete _workerOfflineQueuedIds[item.issueId];
+        saveWorkerOfflinePendingMap();
+        await empireOfflineQueueDelete(item.id);
+        synced++;
+      } catch (e) {
+        console.warn('Worker offline sync failed for', item.id, e.message);
+      }
+    }
+    if (synced) loadIssues(true);
+    await refreshWorkerOfflineBanner();
+    if (synced && !silent) uiAlert('\u2705 ' + synced + ' job fix' + (synced === 1 ? '' : 'es') + ' uploaded.');
+  } finally {
+    _workerOfflineSyncRunning = false;
+  }
+}
+function initWorkerOfflineSync() {
+  if (!isCivilWorker()) return;
+  restoreWorkerOfflineQueueState().then(function () {
+    refreshWorkerOfflineBanner();
+    syncWorkerOfflineFixes(true);
+  });
+  if (!window._workerOfflineOnlineBound) {
+    window._workerOfflineOnlineBound = true;
+    window.addEventListener('online', function () { syncWorkerOfflineFixes(true); });
+  }
+  if (!window._workerOfflinePollStarted) {
+    window._workerOfflinePollStarted = true;
+    setInterval(function () {
+      if (!isCivilWorker()) return;
+      var wa = document.getElementById('workerApp');
+      if (!wa || !wa.classList.contains('show')) return;
+      syncWorkerOfflineFixes(true);
+    }, 20000);
+  }
 }
 function renderWorkerJobs() {
   var host = document.getElementById('workerJobList');
@@ -364,7 +520,11 @@ function renderWorkerJobs() {
   rows.sort(compareIssuesNewestFirst);
   if (bar) bar.textContent = rows.length + ' open job' + (rows.length === 1 ? '' : 's') + ' for your team';
   if (!rows.length) {
-    host.innerHTML = '<p class="worker-empty">\u2705 No open jobs right now.<br><span style="font-size:13px;color:var(--text-soft);">Pull down or tap refresh when the engineer assigns new work.</span></p>';
+    var pending = Object.keys(_workerOfflineQueuedIds || {}).length;
+    var pendingNote = pending
+      ? ('<br><span style="font-size:13px;color:#d68910;">' + pending + ' fix' + (pending === 1 ? '' : 'es') + ' waiting to upload when you have signal.</span>')
+      : '';
+    host.innerHTML = '<p class="worker-empty">\u2705 No open jobs right now.' + pendingNote + '<br><span style="font-size:13px;color:var(--text-soft);">Pull down or tap refresh when the engineer assigns new work.</span></p>';
     return;
   }
   host.innerHTML = rows.map(function (r) {
@@ -383,7 +543,8 @@ function openWorkerJob(id) {
   var r = allIssues.find(function (x) { return x.id === id; });
   if (!r) return;
   if (workerCompletedByMe(r)) {
-    openWorkerJobDoneView(id);
+    if (workerHasPendingOfflineFix(r)) openWorkerJobPendingView(id);
+    else openWorkerJobDoneView(id);
     return;
   }
   _workerFixId = id;
@@ -412,6 +573,43 @@ function openWorkerJob(id) {
   body.innerHTML = h;
   renderWorkerPhotoGrid();
   document.getElementById('workerJobModal').classList.add('show');
+}
+function openWorkerJobPendingView(id) {
+  var r = allIssues.find(function (x) { return x.id === id; });
+  if (!r) return;
+  _workerFixId = null;
+  _workerFixPhotos = [];
+  _workerUploading = 0;
+  var title = document.getElementById('workerModalTitle');
+  if (title) title.textContent = '#' + issueRef(r.num);
+  var body = document.getElementById('workerModalBody');
+  if (!body) return;
+  body.innerHTML = '<p class="worker-empty">Loading saved fix\u2026</p>';
+  document.getElementById('workerJobModal').classList.add('show');
+  if (typeof empireOfflineQueueAll !== 'function') {
+    body.innerHTML = '<p class="worker-empty">Waiting to upload when you have signal.</p>';
+    return;
+  }
+  empireOfflineQueueAll().then(function (rows) {
+    var item = rows.find(function (x) {
+      return x.type === 'worker_issue_fix' && x.dept === ISSUE_CFG.dept && x.issueId === id;
+    });
+    var photos = item ? [].concat(item.remoteUrls || [], item.imageDataUrls || []) : [];
+    var h = '<h2>' + r.issueType + '</h2><p class="loc">' + (projectNames[r.project] || r.project) + ' &middot; ' + locStr(r) + '</p>';
+    h += '<div class="worker-done-locked worker-pending-sync"><p class="worker-done-msg">' + checkIconHtml('#d68910') + ' Saved on this device</p>';
+    h += '<p style="font-size:13px;color:var(--text-soft);margin:0;">Waiting for internet to upload your photos and mark this job fixed. Keep this page open or come back later.</p></div>';
+    if (photos.length) {
+      h += '<div class="worker-fix-section"><h3>Your photos (not uploaded yet)</h3><div class="worker-photo-grid">';
+      photos.forEach(function (url, i) {
+        h += '<div class="worker-photo-item"><img src="' + url + '" onclick="bigImg(this.src)" alt="Photo ' + (i + 1) + '"><span class="worker-photo-label">Photo ' + (i + 1) + (isOfflinePhotoUrl(url) ? ' &middot; on device' : '') + '</span></div>';
+      });
+      h += '</div></div>';
+    }
+    if (item && item.fixNote) h += '<p style="font-size:13px;color:var(--text-soft);margin-top:10px;"><strong>Note:</strong> ' + item.fixNote + '</p>';
+    body.innerHTML = h;
+  }).catch(function () {
+    body.innerHTML = '<p class="worker-empty">Waiting to upload when you have signal.</p>';
+  });
 }
 function openWorkerJobDoneView(id) {
   var r = allIssues.find(function (x) { return x.id === id; });
@@ -451,9 +649,10 @@ function renderWorkerPhotoGrid() {
     grid.innerHTML = '<p class="worker-photo-empty">No photos yet — tap the camera below</p>';
   } else {
     grid.innerHTML = _workerFixPhotos.map(function (url, i) {
+      var offline = isOfflinePhotoUrl(url);
       return '<div class="worker-photo-item"><img src="' + url + '" onclick="bigImg(this.src)" alt="Photo ' + (i + 1) + '">'
         + '<button type="button" class="worker-photo-remove" onclick="removeWorkerFixPhoto(' + i + ')" aria-label="Remove photo">&times;</button>'
-        + '<span class="worker-photo-label">Photo ' + (i + 1) + '</span></div>';
+        + '<span class="worker-photo-label">Photo ' + (i + 1) + (offline ? ' <span class="worker-photo-offline">on device</span>' : '') + '</span></div>';
     }).join('');
   }
   updateWorkerSubmitBtn();
@@ -487,15 +686,97 @@ function processWorkerFixPhoto(file) {
   if (!file || !_workerFixId) return;
   _workerUploading++;
   updateWorkerSubmitBtn();
-  compressImage(file, function (url) {
-    _workerUploading = Math.max(0, _workerUploading - 1);
-    if (url) {
-      _workerFixPhotos.push(url);
-      renderWorkerPhotoGrid();
-    } else {
-      uiAlert('\u274c Photo upload failed. Try again.');
+  compressImageToBlob(file, function (blob) {
+    if (!blob) {
+      _workerUploading = Math.max(0, _workerUploading - 1);
+      uiAlert('\u274c Could not process photo. Try again.');
       updateWorkerSubmitBtn();
+      return;
     }
+    function finishWithLocal(dataUrl) {
+      _workerFixPhotos.push(dataUrl);
+      _workerUploading = Math.max(0, _workerUploading - 1);
+      renderWorkerPhotoGrid();
+      if (!navigator.onLine) {
+        uiAlert('\u2705 Photo saved on this device. It will upload when you have signal.');
+      }
+    }
+    function finishWithRemote(url) {
+      _workerFixPhotos.push(url);
+      _workerUploading = Math.max(0, _workerUploading - 1);
+      renderWorkerPhotoGrid();
+    }
+    if (!navigator.onLine) {
+      empireOfflineBlobToDataUrl(blob).then(finishWithLocal).catch(function () {
+        _workerUploading = Math.max(0, _workerUploading - 1);
+        uiAlert('\u274c Could not save photo on device.');
+        updateWorkerSubmitBtn();
+      });
+      return;
+    }
+    uploadToImgbb(blob, function (url) {
+      if (url) finishWithRemote(url);
+      else {
+        empireOfflineBlobToDataUrl(blob).then(function (dataUrl) {
+          finishWithLocal(dataUrl);
+          uiAlert('Upload failed — photo saved on this device. It will sync when you have signal.');
+        }).catch(function () {
+          _workerUploading = Math.max(0, _workerUploading - 1);
+          uiAlert('\u274c Photo upload failed. Try again when you have signal.');
+          updateWorkerSubmitBtn();
+        });
+      }
+    });
+  });
+}
+function compressImageToBlob(file, cb) {
+  var r = new FileReader();
+  r.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var mx = 1400;
+      var s = Math.min(1, mx / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(function (b) { cb(b); }, 'image/jpeg', 0.7);
+    };
+    img.onerror = function () { cb(null); };
+    img.src = e.target.result;
+  };
+  r.onerror = function () { cb(null); };
+  r.readAsDataURL(file);
+}
+function workerFixNeedsOfflineQueue() {
+  return !navigator.onLine || _workerFixPhotos.some(isOfflinePhotoUrl);
+}
+function submitWorkerFixSuccess(id, d) {
+  if (d && d.partial) {
+    allIssues = allIssues.filter(function (x) { return x.id !== id; });
+    writeIssuesCacheAsync(allIssues);
+    closeWorkerJob();
+    renderWorkerJobs();
+    uiAlert('\u2705 Your fix was saved. Waiting for another worker to complete this job (' + (d.workerDone || 1) + '/2).');
+    return;
+  }
+  allIssues = allIssues.filter(function (x) { return x.id !== id; });
+  writeIssuesCacheAsync(allIssues);
+  closeWorkerJob();
+  renderWorkerJobs();
+  uiAlert('\u2705 Job marked fixed!');
+}
+function submitWorkerFixOffline(id, note, btn) {
+  enqueueWorkerFixOffline(id, note, _workerFixPhotos.slice()).then(function () {
+    markWorkerFixQueuedLocally(id);
+    allIssues = allIssues.filter(function (x) { return x.id !== id; });
+    writeIssuesCacheAsync(allIssues);
+    closeWorkerJob();
+    renderWorkerJobs();
+    uiAlert('\u2705 Saved on this device. Will upload automatically when you have signal.');
+  }).catch(function (e) {
+    uiAlert('\u274c ' + (e.message || 'Could not save offline'));
+    if (btn) { btn.disabled = false; updateWorkerSubmitBtn(); }
   });
 }
 function submitWorkerFix(id) {
@@ -510,25 +791,18 @@ function submitWorkerFix(id) {
   var noteEl = document.getElementById('worker-fix-note');
   var note = noteEl ? noteEl.value.trim() : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
-  fetchJSONRetry({ action: ISSUE_CFG.actions.markFixed, id: id, fixedPhoto: joinFixedPhotos(_workerFixPhotos), fixedPhotos: _workerFixPhotos.slice(), fixNote: note, token: issueToken() || '' })
+  if (workerFixNeedsOfflineQueue()) {
+    submitWorkerFixOffline(id, note, btn);
+    return;
+  }
+  var urls = normalizePhotoUrls(_workerFixPhotos);
+  fetchJSONRetry({ action: ISSUE_CFG.actions.markFixed, id: id, fixedPhoto: joinFixedPhotos(urls), fixedPhotos: urls, fixNote: note, token: issueToken() || '' })
     .then(function (d) {
       if (d && d.ok === false) {
         if (empireAuthHandleInvalidSession_(d, issueSessionLogoutOpts())) return;
         throw new Error(d.message || d.error || 'Could not save');
       }
-      if (d && d.partial) {
-        allIssues = allIssues.filter(function (x) { return x.id !== id; });
-        writeIssuesCacheAsync(allIssues);
-        closeWorkerJob();
-        renderWorkerJobs();
-        uiAlert('\u2705 Your fix was saved. Waiting for another worker to complete this job (' + (d.workerDone || 1) + '/2).');
-        return;
-      }
-      allIssues = allIssues.filter(function (x) { return x.id !== id; });
-      writeIssuesCacheAsync(allIssues);
-      closeWorkerJob();
-      renderWorkerJobs();
-      uiAlert('\u2705 Job marked fixed!');
+      submitWorkerFixSuccess(id, d);
     })
     .catch(function (e) {
       if (/already_submitted|already submitted/i.test(e.message || '')) {
@@ -537,6 +811,10 @@ function submitWorkerFix(id) {
         closeWorkerJob();
         renderWorkerJobs();
         uiAlert('\u2705 You already completed this job.');
+        return;
+      }
+      if (!navigator.onLine || /fetch|network|failed|timeout|upload/i.test(e.message || '')) {
+        submitWorkerFixOffline(id, note, btn);
         return;
       }
       uiAlert('\u274c ' + e.message);

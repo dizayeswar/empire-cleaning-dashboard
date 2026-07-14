@@ -274,6 +274,13 @@
   color: var(--text-soft);
   padding: 4px 0 6px;
 }
+.worker-photo-offline {
+  color: #d68910;
+  font-weight: 700;
+}
+.worker-pending-sync .worker-done-msg {
+  color: #d68910;
+}
 .worker-add-photo {
   width: 100%;
   margin: 0 0 12px;

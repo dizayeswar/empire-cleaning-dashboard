@@ -1,6 +1,6 @@
-/* Empire EGS — force service worker + asset cache refresh on version bump */
+/* Empire EGS — register service worker; purge caches only when build id changes */
 (function () {
-  var BUILD = '2026-07-15-push17';
+  var BUILD = '2026-07-15-push18';
   var STORAGE_KEY = 'empire_build_id';
 
   function purgeEmpireCaches() {
@@ -10,14 +10,6 @@
         keys.filter(function (k) { return k.indexOf('empire-egs-') === 0; }).map(function (k) { return caches.delete(k); })
       );
     });
-  }
-
-  function reloadOnce() {
-    try {
-      if (sessionStorage.getItem('empire_sw_reload') === BUILD) return;
-      sessionStorage.setItem('empire_sw_reload', BUILD);
-    } catch (e) {}
-    location.reload();
   }
 
   try {
@@ -30,7 +22,9 @@
             return Promise.all(regs.map(function (r) { return r.unregister(); }));
           });
         }
-      }).finally(reloadOnce);
+      }).finally(function () {
+        location.replace(location.pathname.split('?')[0] + '?v=' + encodeURIComponent(BUILD));
+      });
       return;
     }
     localStorage.setItem(STORAGE_KEY, BUILD);
@@ -43,19 +37,5 @@
     updateViaCache: 'none'
   }).then(function (reg) {
     reg.update();
-    if (reg.waiting) {
-      try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
-    }
-    reg.addEventListener('updatefound', function () {
-      var worker = reg.installing;
-      if (!worker) return;
-      worker.addEventListener('statechange', function () {
-        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-          try { worker.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {}
-        }
-      });
-    });
   }).catch(function () {});
-
-  navigator.serviceWorker.addEventListener('controllerchange', reloadOnce);
 })();

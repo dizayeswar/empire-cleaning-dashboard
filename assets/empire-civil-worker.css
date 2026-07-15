@@ -1,4 +1,13 @@
 /* Civil worker — phone-first job list */
+body.civil-worker-mode #mainContainer {
+  display: none !important;
+}
+body.civil-worker-mode #workerApp.show {
+  display: flex !important;
+}
+body:not(.civil-worker-mode) #workerApp {
+  display: none !important;
+}
 .worker-app {
   display: none;
   flex-direction: column;

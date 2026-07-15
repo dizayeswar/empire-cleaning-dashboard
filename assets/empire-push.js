@@ -184,7 +184,7 @@
           return false;
         }
         if (d && d.error === 'Unknown action') {
-          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push17).');
+          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push18).');
           return false;
         }
         var err = 'Save failed: ' + ((d && (d.message || d.error)) || 'server error');
@@ -323,7 +323,7 @@
   function startIssuePollFallback() {
     if (_pollTimer || !isWorkerView()) return;
     _pollTimer = setInterval(function () {
-      if (typeof loadIssues === 'function') loadIssues(false);
+      if (typeof loadIssues === 'function') loadIssues(true);
     }, WORKER_ISSUE_POLL_MS);
   }
 
@@ -404,6 +404,8 @@
     var perm = Notification.permission;
     if (perm === 'denied') {
       setWorkerPushStatus('Notifications off — enable in phone Settings. v' + ver);
+    } else if (perm === 'granted') {
+      startIssuePollFallback();
     }
   };
 

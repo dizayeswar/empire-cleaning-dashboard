@@ -64,7 +64,25 @@ function fixedPhotosBlockHtml(fixedPhoto, r) {
   }).join('');
   return count + '<div class="fixed-photo-grid">' + imgs + '</div>';
 }
-function isCivilWorker() { return !!(ISSUE_CFG.workerMode && String(empireGetRole() || '').toLowerCase() === 'worker'); }
+function isCivilWorkerAccount_(username) {
+  username = String(username || '').trim().toLowerCase();
+  if (!username) return false;
+  var teams = civilWorkersRoster();
+  if (!teams) return false;
+  var keys = Object.keys(teams);
+  for (var i = 0; i < keys.length; i++) {
+    var list = teams[keys[i]] || [];
+    for (var j = 0; j < list.length; j++) {
+      if (String(list[j].id || '').trim().toLowerCase() === username) return true;
+    }
+  }
+  return false;
+}
+function isCivilWorker() {
+  if (!ISSUE_CFG.workerMode) return false;
+  if (String(empireGetRole() || '').toLowerCase() === 'worker') return true;
+  return isCivilWorkerAccount_(empireGetUser());
+}
 function canMarkIssueFixed() {
   var p = PAGEPERMS || {};
   if (isCivilWorker()) return true;
@@ -491,6 +509,7 @@ function assignIssue(id) {
 function enterWorkerApp() {
   document.getElementById('loginPage').classList.remove('show');
   document.getElementById('mainContainer').classList.remove('show');
+  document.body.classList.add('civil-worker-mode');
   stopEngineerLocationPoll();
   var wa = document.getElementById('workerApp');
   if (wa) wa.classList.add('show');
@@ -1458,7 +1477,33 @@ function applyPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGlobal
   var rb=document.querySelector('button[onclick="openResetModal()"]'); if(rb && p.reset!==true) rb.style.display='none'; var tb=document.getElementById('btnTrash'); if(tb && p.reset!==true) tb.style.display='none';
   var wl=document.getElementById('whoLabel'); if(wl){ var u=empireGetUser()||''; var role=empireGetRole()||''; wl.textContent = u ? ('Logged in as: '+u+(role?(' ('+role+')'):'')) : ''; }
 }
-function handleLogin(e){ empireAuthLogin(e, ISSUE_CFG.dept, { onSuccess: function(d){ PAGEPERMS=d.perms||{}; if(typeof empireAuthSet==='function' && d.trade) empireAuthSet('trade', d.trade); if(isCivilWorker()) enterWorkerApp(); else enterApp(); applyPerms(); } }); }
+function routeCivilIssueView_() {
+  applyPerms();
+  if (isCivilWorker()) {
+    enterWorkerApp();
+    return;
+  }
+  enterApp();
+}
+function syncWorkerRoleThenRoute_() {
+  var routed = false;
+  function done() {
+    if (routed) return;
+    routed = true;
+    routeCivilIssueView_();
+  }
+  if (!ISSUE_CFG.workerMode || !empireGetToken()) {
+    done();
+    return;
+  }
+  if (String(empireGetRole() || '').toLowerCase() === 'worker' || !isCivilWorkerAccount_(empireGetUser())) {
+    done();
+    return;
+  }
+  empireAuthRefreshPerms(function () { done(); });
+  setTimeout(done, 1200);
+}
+function handleLogin(e){ empireAuthLogin(e, ISSUE_CFG.dept, { onSuccess: function(d){ PAGEPERMS=d.perms||{}; if(typeof empireAuthSet==='function' && d.trade) empireAuthSet('trade', d.trade); routeCivilIssueView_(); } }); }
 function logout(){ stopWorkerLocationPing(); if(typeof empirePushStopWorker==='function') empirePushStopWorker(); stopEngineerLocationPoll(); empireAuthLogout({ extraKeys: [ISSUES_CACHE_KEY, ISSUES_CACHE_TS_KEY], redirect: 'index.html', reload: false }); }
 function issueSessionLogoutOpts(){ return { extraKeys: [ISSUES_CACHE_KEY, ISSUES_CACHE_TS_KEY], redirect: 'index.html', reload: false }; }
 function forceSessionLogout(d){ return empireAuthHandleInvalidSession_(d, issueSessionLogoutOpts()); }
@@ -1575,10 +1620,10 @@ function syncRepMonth(){ var y=(document.getElementById('rep-month-y')||{}).valu
 function renderAnalytics(){ const total=allIssues.length; const open=allIssues.filter(r=>r.status!=='fixed').length; const fixed=total-open; let h='<div class="stats"><div class="stat-box"><div class="stat-value">'+total+'</div><div class="stat-label">Total Issues</div></div><div class="stat-box"><div class="stat-value" style="color:var(--open-color);">'+open+'</div><div class="stat-label">Open</div></div><div class="stat-box"><div class="stat-value" style="color:#27ae60;">'+fixed+'</div><div class="stat-label">Fixed</div></div></div>'; h+='<h3>Open vs Fixed</h3><div style="display:flex;flex-wrap:wrap;gap:26px;align-items:center;margin:10px 0 22px;">'+donutHtml(open,fixed,total)+'<div style="display:flex;flex-wrap:wrap;gap:12px;">'+['ec','es','wd','ww','ra'].map(function(p){ var pr=allIssues.filter(function(r){return r.project===p;}); var o=pr.filter(function(r){return r.status!=='fixed';}).length; return miniDonutHtml(projectNames[p],o,pr.length-o); }).join('')+'</div></div>'; var colg='<colgroup><col style="width:40%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>'; h+='<h3>By Project</h3><table style="table-layout:fixed;width:100%;">'+colg+'<thead><tr><th>Project</th><th>Open</th><th>Fixed</th><th>Total</th></tr></thead><tbody>'; ['ec','es','wd','ww','ra'].forEach(p=>{ const pr=allIssues.filter(r=>r.project===p); if(pr.length===0)return; const o=pr.filter(r=>r.status!=='fixed').length; h+='<tr><td>'+projectNames[p]+'</td><td style="color:var(--open-color);">'+o+'</td><td style="color:#1d9e75;">'+(pr.length-o)+'</td><td>'+pr.length+'</td></tr>'; }); h+='</tbody></table>'; const types={}; allIssues.forEach(r=>{ const t=r.issueType; if(!types[t]) types[t]={open:0,fixed:0}; if(r.status==='fixed') types[t].fixed++; else types[t].open++; }); h+='<h3>By Issue Type</h3><table style="table-layout:fixed;width:100%;">'+colg+'<thead><tr><th>Type</th><th>Open</th><th>Fixed</th><th>Total</th></tr></thead><tbody>'; Object.keys(types).sort((a,b)=>(types[b].open+types[b].fixed)-(types[a].open+types[a].fixed)).forEach(t=>{ const o=types[t].open,f=types[t].fixed; h+='<tr><td>'+t+'</td><td style="color:var(--open-color);">'+o+'</td><td style="color:#1d9e75;">'+f+'</td><td>'+(o+f)+'</td></tr>'; }); h+='</tbody></table>'; document.getElementById('analyticsContent').innerHTML=h; }
 function switchTab(e,t){ document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); document.getElementById(t).classList.add('active'); e.target.classList.add('active'); empireSaveActiveTab(ISSUE_CFG.prefix+'_active_tab', t); if(t==='add'){ window._editingId=null; var eb=document.getElementById('editBanner'); if(eb) eb.style.display='none'; } if(t==='analytics') renderAnalytics(); if(t==='list') startEngineerLocationPoll(); else stopEngineerLocationPoll(); }
 function switchTabTo(t){ document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.getAttribute('onclick').indexOf("'"+t+"'")!==-1) b.classList.add('active'); }); if(t==='list') startEngineerLocationPoll(); else stopEngineerLocationPoll(); }
-function enterApp(){ document.getElementById('loginPage').classList.remove('show'); var wa=document.getElementById('workerApp'); if(wa) wa.classList.remove('show'); stopWorkerLocationPing(); document.getElementById('mainContainer').classList.add('show'); applyPerms(); refreshPerms(); populateSelect('ci-project',['ec','es','wd','ww','ra'],true); updateCIBuildings(); populateSelect('ci-spot',spots,false); populateSelect('ci-issuetype',issueTypes,false); const fp=document.getElementById('f-project'); if(fp && fp.options.length<=1){ ['ec','es','wd','ww','ra'].forEach(p=>{ const o=document.createElement('option'); o.value=p;o.textContent=projectNames[p]; fp.appendChild(o); }); } initTradeFilters(); window._issueFilterState=empireBindFilterPersistence({ key:ISSUE_CFG.prefix+'_list_filters', fields:['f-project','f-group','f-status','f-month','f-search'], onApply:function(){ renderIssues(); } }); initRepMonth(); document.getElementById('ci-date').value=new Date().toISOString().split('T')[0]; var tab=empireRestoreActiveTab(ISSUE_CFG.prefix+'_active_tab','list'); switchTabTo(tab); if(tab==='analytics') renderAnalytics(); setTimeout(function(){ loadIssues(false); },0); syncWorkerLocationsUi(); }
+function enterApp(){ document.body.classList.remove('civil-worker-mode'); document.getElementById('loginPage').classList.remove('show'); var wa=document.getElementById('workerApp'); if(wa) wa.classList.remove('show'); stopWorkerLocationPing(); document.getElementById('mainContainer').classList.add('show'); applyPerms(); refreshPerms(); populateSelect('ci-project',['ec','es','wd','ww','ra'],true); updateCIBuildings(); populateSelect('ci-spot',spots,false); populateSelect('ci-issuetype',issueTypes,false); const fp=document.getElementById('f-project'); if(fp && fp.options.length<=1){ ['ec','es','wd','ww','ra'].forEach(p=>{ const o=document.createElement('option'); o.value=p;o.textContent=projectNames[p]; fp.appendChild(o); }); } initTradeFilters(); window._issueFilterState=empireBindFilterPersistence({ key:ISSUE_CFG.prefix+'_list_filters', fields:['f-project','f-group','f-status','f-month','f-search'], onApply:function(){ renderIssues(); } }); initRepMonth(); document.getElementById('ci-date').value=new Date().toISOString().split('T')[0]; var tab=empireRestoreActiveTab(ISSUE_CFG.prefix+'_active_tab','list'); switchTabTo(tab); if(tab==='analytics') renderAnalytics(); setTimeout(function(){ loadIssues(false); },0); syncWorkerLocationsUi(); }
 var _lastPermFetch=0;
 function refreshPerms(){ var tk=issueToken(); if(!tk) return; var now=Date.now(); if(now-_lastPermFetch<300000) return; _lastPermFetch=now; empireAuthRefreshPerms(function(d){ PAGEPERMS=d.perms||empireGetPerms(); applyPerms(); }); }
-function bootApp(){ empireAuthPageBoot({ dept: ISSUE_CFG.dept, onEnter: function(){ if(isCivilWorker()) enterWorkerApp(); else enterApp(); } }); }
+function bootApp(){ empireAuthPageBoot({ dept: ISSUE_CFG.dept, onEnter: function(){ syncWorkerRoleThenRoute_(); } }); }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bootApp); else bootApp();
 // ===== Reset Data (password) =====
 function openResetModal(){ document.getElementById('resetPwInput').value=''; document.getElementById('resetMsg').textContent=''; document.getElementById('resetModal').style.display='flex'; setTimeout(function(){document.getElementById('resetPwInput').focus();},30); }

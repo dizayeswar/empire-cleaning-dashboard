@@ -20,7 +20,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-15-push14';
+var SCRIPT_VERSION = '2026-07-15-push15';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -151,8 +151,18 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
     var action = body.action;
-    // Fast path: push token save must not wait on spreadsheet locks / password rechecks.
+    // Fast path: push actions must not wait on spreadsheet locks / password rechecks.
     if (action === 'saveWorkerPushToken') return respond(handleSaveWorkerPushTokenFast_(body));
+    if (action === 'debugWorkerPush') {
+      var dbgAuth = verifyTokenForPushSave_(body && body.token, body);
+      if (!dbgAuth.ok) return respond(dbgAuth);
+      return respond(handleDebugWorkerPush(body, dbgAuth));
+    }
+    if (action === 'testWorkerPush') {
+      var tstAuth = verifyTokenForPushSave_(body && body.token, body);
+      if (!tstAuth.ok) return respond(tstAuth);
+      return respond(handleTestWorkerPush(body, tstAuth));
+    }
     if (action === 'login' || action === 'verifyLogin') return respond(handleLogin(body));
     if (action === 'getPerms') return respond(handleGetPerms(body));
     if (action === 'getSummary') return respond(handleGetSummary(body));
@@ -623,6 +633,12 @@ function rememberPushAuth_(token, username, tokenDept, role) {
       role: rec.role,
       savedAt: new Date().getTime()
     }));
+  } catch (e) {}
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      'worker_sess_' + String(username).trim().toLowerCase(),
+      String(token)
+    );
   } catch (e) {}
 }
 function handleLogin(body) {
@@ -1503,14 +1519,9 @@ function isKnownCivilWorker_(username) {
   username = String(username || '').trim().toLowerCase();
   return !!(username && CIVIL_WORKER_TEAM[username]);
 }
-/** Auth for push save — Script properties first (no spreadsheet). */
+/** Auth for push save — Script properties + cache only (never open spreadsheet). */
 function verifyTokenForPushSave_(token, body) {
   if (!token) return {ok:false, error:'No token'};
-  var session = verifyTokenSession_(token);
-  if (session.ok) {
-    rememberPushAuth_(token, session.username, session.dept, session.role);
-    return session;
-  }
   var tkey = tokenCacheKey_(token);
   try {
     var prop = PropertiesService.getScriptProperties().getProperty(pushAuthPropKey_(token));
@@ -1535,10 +1546,19 @@ function verifyTokenForPushSave_(token, body) {
       }
     }
   } catch (e) {}
+  var guessUser = String((body && body.username) || '').trim().toLowerCase();
+  if (guessUser && isKnownCivilWorker_(guessUser)) {
+    try {
+      var storedTok = PropertiesService.getScriptProperties().getProperty('worker_sess_' + guessUser);
+      if (storedTok && String(storedTok) === String(token)) {
+        return {ok:true, username:guessUser, role:'worker', dept:'civil issue'};
+      }
+    } catch (e) {}
+  }
   return {
     ok: false,
     error: 'session_expired',
-    message: 'Log out, sign in again, then tap Enable alerts right away.'
+    message: 'Log out, sign in again, then tap Enable alerts within 1 minute.'
   };
 }
 function handleSaveWorkerPushTokenFast_(body) {

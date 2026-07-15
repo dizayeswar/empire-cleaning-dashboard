@@ -136,10 +136,16 @@
 
   function callBackend(body, timeoutMs) {
     timeoutMs = timeoutMs || 30000;
-    if (typeof fetchJSONRetry === 'function') {
-      return fetchJSONRetry(body, 1, timeoutMs);
-    }
     return postToScript(body, timeoutMs);
+  }
+
+  function setPushButtonsDisabled(disabled) {
+    var bar = document.getElementById('workerPushBar');
+    if (!bar) return;
+    bar.querySelectorAll('button').forEach(function (btn) {
+      btn.disabled = !!disabled;
+      btn.style.opacity = disabled ? '0.55' : '';
+    });
   }
 
   function saveFcmToken(fcmToken) {
@@ -159,13 +165,14 @@
       return Promise.resolve(false);
     }
     setWorkerPushStatus('Saving token to server…');
-    return callBackend({
+    setPushButtonsDisabled(true);
+    return withTimeout(callBackend({
       action: act,
       fcmToken: fcmToken,
       platform: 'web-fcm',
       token: session,
       username: username
-    }, 30000)
+    }, 20000), 22000, 'Server save')
       .then(function (d) {
         if (d && (d.ok || d.success)) {
           setWorkerPushStatus('Alerts enabled. Tap Send test, then lock your phone.');
@@ -177,7 +184,7 @@
           return false;
         }
         if (d && d.error === 'Unknown action') {
-          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push14).');
+          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push15).');
           return false;
         }
         var err = 'Save failed: ' + ((d && (d.message || d.error)) || 'server error');
@@ -190,6 +197,9 @@
         setWorkerPushStatus(err);
         setWorkerPushBanner(err, false);
         return false;
+      })
+      .finally(function () {
+        setPushButtonsDisabled(false);
       });
   }
 
@@ -358,6 +368,7 @@
       setWorkerPushStatus('Install to Home Screen first, then open from the icon.');
       return;
     }
+    setPushButtonsDisabled(true);
     setWorkerPushStatus('Checking notification permission…');
     withTimeout(Notification.requestPermission(), 10000, 'Permission')
       .then(function (perm) {
@@ -374,6 +385,9 @@
       })
       .catch(function (err) {
         setWorkerPushStatus('Push failed: ' + ((err && err.message) || 'permission error'));
+      })
+      .finally(function () {
+        setPushButtonsDisabled(false);
       });
   };
 

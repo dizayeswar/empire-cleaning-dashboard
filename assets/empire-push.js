@@ -2,6 +2,7 @@
 (function () {
   var _knownJobIds = null;
   var _pollTimer = null;
+  var _lastPushSaveError = '';
   var WORKER_ISSUE_POLL_MS = 90000;
   var SW_URL = './firebase-messaging-sw.js';
 
@@ -148,6 +149,13 @@
     });
   }
 
+  function pauseWorkerRequestsForPush_() {
+    if (typeof empirePauseWorkerBackgroundRequests === 'function') {
+      empirePauseWorkerBackgroundRequests(45000);
+    }
+    stopIssuePollFallback();
+  }
+
   function saveFcmToken(fcmToken) {
     if (!fcmToken || !window.GOOGLE_SCRIPT_URL || !window.ISSUE_CFG || !ISSUE_CFG.actions) {
       return Promise.resolve(false);
@@ -166,34 +174,41 @@
     }
     setWorkerPushStatus('Saving token to server…');
     setPushButtonsDisabled(true);
+    pauseWorkerRequestsForPush_();
+    _lastPushSaveError = '';
     return withTimeout(callBackend({
       action: act,
       fcmToken: fcmToken,
       platform: 'web-fcm',
       token: session,
       username: username
-    }, 20000), 22000, 'Server save')
+    }, 35000), 38000, 'Server save')
       .then(function (d) {
         if (d && (d.ok || d.success)) {
+          _lastPushSaveError = '';
           setWorkerPushStatus('Alerts enabled. Tap Send test, then lock your phone.');
           setWorkerPushBanner('', false);
           return true;
         }
         if (d && d.error === 'session_expired') {
+          _lastPushSaveError = 'session_expired';
           setWorkerPushStatus('Session expired — log out, log in, Enable alerts again.');
           return false;
         }
         if (d && d.error === 'Unknown action') {
-          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push18).');
+          _lastPushSaveError = 'old_backend';
+          setWorkerPushStatus('Backend old — paste Code.gs + Deploy New version (need push19).');
           return false;
         }
-        var err = 'Save failed: ' + ((d && (d.message || d.error)) || 'server error');
+        _lastPushSaveError = String((d && (d.error || d.message)) || 'server error');
+        var err = 'Save failed: ' + _lastPushSaveError;
         setWorkerPushStatus(err);
         setWorkerPushBanner(err, false);
         return false;
       })
       .catch(function (e) {
-        var err = 'Save failed: ' + ((e && e.message) || 'network error');
+        _lastPushSaveError = String((e && e.message) || 'network error');
+        var err = 'Save failed: ' + _lastPushSaveError;
         setWorkerPushStatus(err);
         setWorkerPushBanner(err, false);
         return false;
@@ -369,6 +384,7 @@
       return;
     }
     setPushButtonsDisabled(true);
+    pauseWorkerRequestsForPush_();
     setWorkerPushStatus('Checking notification permission…');
     withTimeout(Notification.requestPermission(), 10000, 'Permission')
       .then(function (perm) {
@@ -439,6 +455,7 @@
       return;
     }
     setWorkerPushStatus('Running diagnose…');
+    pauseWorkerRequestsForPush_();
     var localPart = 'Local:?';
     var savePart = 'Save:?';
     var localChain = (Notification.permission === 'granted' && pushConfigured())
@@ -446,12 +463,12 @@
           localPart = 'Local:' + (t ? 'yes' : 'NO');
           if (!t) return false;
           return saveFcmToken(t).then(function (ok) {
-            savePart = 'Save:' + (ok ? 'OK' : 'FAIL');
+            savePart = 'Save:' + (ok ? 'OK' : ('FAIL ' + (_lastPushSaveError || 'unknown')));
             return ok;
           });
         }).catch(function (e) {
           localPart = 'Local:FAIL ' + ((e && e.message) || '');
-          savePart = 'Save:FAIL';
+          savePart = 'Save:FAIL ' + ((e && e.message) || '');
           return false;
         })
       : Promise.resolve(false);

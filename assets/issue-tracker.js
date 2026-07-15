@@ -520,7 +520,7 @@ function enterWorkerApp() {
   initWorkerOfflineSync();
   startWorkerLocationPing();
   if (typeof empirePushInitWorker === 'function') empirePushInitWorker();
-  setTimeout(function () { loadIssues(false); }, 2500);
+  setTimeout(function () { if (!workerBackgroundPaused_()) loadIssues(false); }, 30000);
 }
 var _workerLocWatchId = null;
 var _workerLastLocPing = 0;
@@ -574,6 +574,7 @@ function setWorkerLocBanner(text, isError, showEnableBtn) {
 }
 function sendWorkerLocationNow(force) {
   if (!isCivilWorker() || !workerLocationActionsEnabled() || !navigator.geolocation) return;
+  if (workerBackgroundPaused_()) return;
   var now = Date.now();
   if (!force && _workerLastLocPing && now - _workerLastLocPing < WORKER_LOC_PING_MS) return;
   setWorkerLocBanner('Getting GPS position\u2026', false);
@@ -835,6 +836,7 @@ function markWorkerFixQueuedLocally(id) {
 }
 async function syncWorkerOfflineFixes(silent) {
   if (_workerOfflineSyncRunning) return;
+  if (workerBackgroundPaused_()) return;
   if (!navigator.onLine) {
     if (!silent) uiAlert('No connection — your fix will upload when you have signal.');
     return;
@@ -1522,6 +1524,12 @@ var ISSUES_CACHE_KEY, ISSUES_CACHE_TS_KEY, ISSUE_VIEW_KEY;
 
 var ISSUES_CACHE_TTL=300000;
 var _issuesFetchCtrl=null;
+var _workerBgPausedUntil=0;
+window.empirePauseWorkerBackgroundRequests=function(ms){
+  _workerBgPausedUntil=Date.now()+(ms||35000);
+  if(_issuesFetchCtrl) try{ _issuesFetchCtrl.abort(); }catch(e){}
+};
+function workerBackgroundPaused_(){ return isCivilWorker() && Date.now()<_workerBgPausedUntil; }
 function readIssuesCache(){ try{ var s=localStorage.getItem(ISSUES_CACHE_KEY); if(!s) return null; var a=JSON.parse(s); return Array.isArray(a)?a:null; }catch(e){ return null; } }
 function readIssuesCacheTs(){ try{ return Number(localStorage.getItem(ISSUES_CACHE_TS_KEY)||0); }catch(e){ return 0; } }
 function writeIssuesCache(a){ try{ localStorage.setItem(ISSUES_CACHE_KEY, JSON.stringify(a)); localStorage.setItem(ISSUES_CACHE_TS_KEY, String(Date.now())); }catch(e){} }
@@ -1531,7 +1539,7 @@ var _issuesListSig='';
 function issuesListSig(arr){ if(!arr||!arr.length) return '0'; return arr.length+'|'+String(arr[0].id)+'|'+String(arr[arr.length-1].id)+'|'+String(arr[0].status)+'|'+String(arr[arr.length-1].status); }
 function setIssuesFromData(arr){ var sig=issuesListSig(arr); var changed=(sig!==_issuesListSig); _issuesListSig=sig; allIssues=arr; return changed; }
 function deferHeavyRenders(){ var run=function(){ var ac=document.getElementById('analytics'); if(ac&&ac.classList.contains('active')) renderAnalytics(); }; if(window.requestIdleCallback) requestIdleCallback(run,{timeout:2500}); else setTimeout(run,80); }
-function loadIssues(force){ force=!!force; if(isCivilWorker()&&force) sendWorkerLocationNow(true); if(isCivilWorker()){ var cached=readIssuesCache(); if(cached){ setIssuesFromData(cached); renderWorkerJobs(); if(typeof empirePushOnIssuesLoaded==='function') empirePushOnIssuesLoaded(cached); } } var cached=readIssuesCache(); if(cached && !isCivilWorker()){ setIssuesFromData(cached); requestAnimationFrame(function(){ renderIssues(); deferHeavyRenders(); }); } var spinEls=[document.getElementById('listRefreshIcon'),document.getElementById('navRefreshIcon'),document.getElementById('workerRefreshIcon')]; var cacheFresh=cached && !force && (Date.now()-readIssuesCacheTs()<ISSUES_CACHE_TTL); if(cacheFresh) return; var it=document.getElementById('issuesTable'); if(it && !cached && !isCivilWorker()) it.innerHTML=LOADING_HTML; if(isCivilWorker() && !cached){ var wbar=document.getElementById('workerCountBar'); if(wbar) wbar.textContent='Loading jobs\u2026'; } spinEls.forEach(function(el){ if(el) el.classList.add('spinning'); }); if(_issuesFetchCtrl) try{ _issuesFetchCtrl.abort(); }catch(e){} _issuesFetchCtrl=new AbortController(); var fetchTimeout=setTimeout(function(){ try{ _issuesFetchCtrl.abort(); }catch(e){} }, 45000); fetchIssuesFromServer(_issuesFetchCtrl.signal).then(function(d){ if(Array.isArray(d)){ var changed=setIssuesFromData(d); writeIssuesCacheAsync(d); if(isCivilWorker()){ renderWorkerJobs(); if(typeof empirePushOnIssuesLoaded==='function') empirePushOnIssuesLoaded(d); } else if(changed){ requestAnimationFrame(function(){ renderIssues(); deferHeavyRenders(); }); } } else if(d&&d.ok===false){ if(!forceSessionLogout(d) && isCivilWorker()){ var wl=document.getElementById('workerJobList'); if(wl && !cached) wl.innerHTML='<p class="worker-empty">Could not load jobs: '+String(d.message||d.error||'server error')+'</p>'; var wcb=document.getElementById('workerCountBar'); if(wcb) wcb.textContent='Jobs unavailable'; } } }).catch(function(e){ if(e&&e.name==='AbortError'){ if(isCivilWorker()){ var wl2=document.getElementById('workerJobList'); if(wl2 && !cached) wl2.innerHTML='<p class="worker-empty">Jobs timed out — pull down to refresh or tap the refresh icon.</p>'; } return; } if(!cached && it && !isCivilWorker()) it.innerHTML='<p>Error loading: '+e.message+'</p>'; if(isCivilWorker()){ var wl=document.getElementById('workerJobList'); if(wl && !cached) wl.innerHTML='<p class="worker-empty">Error: '+e.message+'</p>'; } }).finally(function(){ clearTimeout(fetchTimeout); spinEls.forEach(function(el){ if(el) el.classList.remove('spinning'); }); }); }
+function loadIssues(force){ force=!!force; if(isCivilWorker()&&!force&&workerBackgroundPaused_()) return; if(isCivilWorker()&&force) sendWorkerLocationNow(true); if(isCivilWorker()){ var cached=readIssuesCache(); if(cached){ setIssuesFromData(cached); renderWorkerJobs(); if(typeof empirePushOnIssuesLoaded==='function') empirePushOnIssuesLoaded(cached); } } var cached=readIssuesCache(); if(cached && !isCivilWorker()){ setIssuesFromData(cached); requestAnimationFrame(function(){ renderIssues(); deferHeavyRenders(); }); } var spinEls=[document.getElementById('listRefreshIcon'),document.getElementById('navRefreshIcon'),document.getElementById('workerRefreshIcon')]; var cacheFresh=cached && !force && (Date.now()-readIssuesCacheTs()<ISSUES_CACHE_TTL); if(cacheFresh) return; var it=document.getElementById('issuesTable'); if(it && !cached && !isCivilWorker()) it.innerHTML=LOADING_HTML; if(isCivilWorker() && !cached){ var wbar=document.getElementById('workerCountBar'); if(wbar) wbar.textContent='Loading jobs\u2026'; } spinEls.forEach(function(el){ if(el) el.classList.add('spinning'); }); if(_issuesFetchCtrl) try{ _issuesFetchCtrl.abort(); }catch(e){} _issuesFetchCtrl=new AbortController(); var fetchTimeout=setTimeout(function(){ try{ _issuesFetchCtrl.abort(); }catch(e){} }, 45000); fetchIssuesFromServer(_issuesFetchCtrl.signal).then(function(d){ if(Array.isArray(d)){ var changed=setIssuesFromData(d); writeIssuesCacheAsync(d); if(isCivilWorker()){ renderWorkerJobs(); if(typeof empirePushOnIssuesLoaded==='function') empirePushOnIssuesLoaded(d); } else if(changed){ requestAnimationFrame(function(){ renderIssues(); deferHeavyRenders(); }); } } else if(d&&d.ok===false){ if(!forceSessionLogout(d) && isCivilWorker()){ var wl=document.getElementById('workerJobList'); if(wl && !cached) wl.innerHTML='<p class="worker-empty">Could not load jobs: '+String(d.message||d.error||'server error')+'</p>'; var wcb=document.getElementById('workerCountBar'); if(wcb) wcb.textContent='Jobs unavailable'; } } }).catch(function(e){ if(e&&e.name==='AbortError'){ if(isCivilWorker()){ var wl2=document.getElementById('workerJobList'); if(wl2 && !cached) wl2.innerHTML='<p class="worker-empty">Jobs timed out — pull down to refresh or tap the refresh icon.</p>'; } return; } if(!cached && it && !isCivilWorker()) it.innerHTML='<p>Error loading: '+e.message+'</p>'; if(isCivilWorker()){ var wl=document.getElementById('workerJobList'); if(wl && !cached) wl.innerHTML='<p class="worker-empty">Error: '+e.message+'</p>'; } }).finally(function(){ clearTimeout(fetchTimeout); spinEls.forEach(function(el){ if(el) el.classList.remove('spinning'); }); }); }
 function locStr(r){ return r.building+' \u00B7 '+r.floor+' \u00B7 '+r.spot; }
 function dayOf(r){ var d=String(r.date||r.createdAt||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); var dt=new Date(d.replace(' ','T')); if(!isNaN(dt.getTime())){ var z=function(n){return String(n).padStart(2,'0');}; return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate()); } return ''; }
 function monthOf(r){ var d=String(r.date||r.createdAt||''); if(!/^\d{4}-\d{2}-\d{2}/.test(d)) return ''; var yr=parseInt(d.slice(0,4),10), mo=parseInt(d.slice(5,7),10), dy=parseInt(d.slice(8,10),10); if(dy>=26){ mo+=1; if(mo>12){mo=1;yr+=1;} } return yr+'-'+String(mo).padStart(2,'0'); }

@@ -1,6 +1,6 @@
 /* Empire EGS — force service worker + asset cache refresh on version bump */
 (function () {
-  var BUILD = '2026-07-15-push16';
+  var BUILD = '2026-07-15-push17';
   var STORAGE_KEY = 'empire_build_id';
 
   function purgeEmpireCaches() {

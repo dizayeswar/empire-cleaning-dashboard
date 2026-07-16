@@ -50,13 +50,16 @@ on storage.objects for select
 to public
 using ( bucket_id = 'empire-photos' );
 
--- Website uploads (anon key in config.js)
+-- Website uploads (anon key in config.js) — photos + assignment voice notes
 create policy "Anon upload empire photos"
 on storage.objects for insert
 to anon
 with check (
   bucket_id = 'empire-photos'
-  and (storage.extension(name) in ('jpg', 'jpeg', 'png', 'webp', 'gif'))
+  and (
+    storage.extension(name) in ('jpg', 'jpeg', 'png', 'webp', 'gif')
+    or storage.extension(name) in ('webm', 'ogg', 'm4a', 'mp3', 'wav', 'aac')
+  )
 );
 
 -- Allow upsert overwrite during migration retries
@@ -204,6 +207,29 @@ Fill in `SUPABASE_CONFIG.url` and `SUPABASE_CONFIG.anonKey`, push to GitHub, har
 
 - Check storage policies (Step 2).  
 - Confirm bucket name is `empire-photos` and bucket is **public**.
+
+### Voice note: “new row violates row-level security policy”
+
+Your Supabase **insert** policy only allows image files. Assignment voice notes use `.webm` / `.ogg` audio.
+
+In Supabase **SQL Editor**, run:
+
+```sql
+drop policy if exists "Anon upload empire photos" on storage.objects;
+
+create policy "Anon upload empire photos"
+on storage.objects for insert
+to anon
+with check (
+  bucket_id = 'empire-photos'
+  and (
+    storage.extension(name) in ('jpg', 'jpeg', 'png', 'webp', 'gif')
+    or storage.extension(name) in ('webm', 'ogg', 'm4a', 'mp3', 'wav', 'aac')
+  )
+);
+```
+
+Then try **Save assignment** again (hard refresh the civil issues page first).
 
 ### Migration: “Set SUPABASE_URL and SUPABASE_SERVICE_KEY”
 

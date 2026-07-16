@@ -58,12 +58,21 @@ function empireStorageAudioPath(folder, blob) {
   if (mime.indexOf('ogg') !== -1) ext = 'ogg';
   else if (mime.indexOf('mp4') !== -1 || mime.indexOf('m4a') !== -1) ext = 'm4a';
   else if (mime.indexOf('mpeg') !== -1 || mime.indexOf('mp3') !== -1) ext = 'mp3';
+  else if (mime.indexOf('wav') !== -1) ext = 'wav';
   var id = (window.crypto && crypto.randomUUID)
     ? crypto.randomUUID()
     : (Date.now() + '-' + Math.random().toString(36).slice(2, 10));
   var d = new Date();
   var ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   return empireStorageSafeFolder(folder) + '/' + ym + '/' + id + '.' + ext;
+}
+
+function empireStorageFriendlyError_(raw) {
+  var msg = String(raw || '');
+  if (/row-level security/i.test(msg)) {
+    return 'Voice note blocked by Supabase storage policy. In Supabase SQL Editor, update the upload policy to allow audio (webm, ogg, m4a). See SUPABASE-MIGRATION.md — Troubleshooting.';
+  }
+  return msg;
 }
 
 function empireUploadBlob(blob, folder, path, cb) {
@@ -94,9 +103,9 @@ function empireUploadBlob(blob, folder, path, cb) {
       }
       try {
         var err = JSON.parse(txt);
-        _lastEmpireUploadError = err.message || err.error || ('Upload failed (' + res.status + ')');
+        _lastEmpireUploadError = empireStorageFriendlyError_(err.message || err.error || ('Upload failed (' + res.status + ')'));
       } catch (e) {
-        _lastEmpireUploadError = txt || ('Upload failed (' + res.status + ')');
+        _lastEmpireUploadError = empireStorageFriendlyError_(txt || ('Upload failed (' + res.status + ')'));
       }
       cb(null);
     });

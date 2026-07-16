@@ -365,7 +365,8 @@ function parseAssignVoiceNote_(raw) {
           url: String(o.url || ''),
           by: String(o.by || ''),
           at: String(o.at || ''),
-          durationSec: Number(o.durationSec) || 0
+          durationSec: Number(o.durationSec) || 0,
+          mimeType: String(o.mimeType || '')
         };
       }
     } catch (e) {}
@@ -379,7 +380,8 @@ function formatAssignVoiceNote_(note) {
     url: String(note.url),
     by: String(note.by || ''),
     at: String(note.at || ''),
-    durationSec: Number(note.durationSec) || 0
+    durationSec: Number(note.durationSec) || 0,
+    mimeType: String(note.mimeType || '')
   });
 }
 function normalizeWorkerId_(raw) {
@@ -1945,7 +1947,8 @@ function handleAssignCivilIssue(body, auth) {
       url: String(body.assignVoiceNote.url || ''),
       by: String((auth && auth.username) || body.assignVoiceNote.by || ''),
       at: String(body.assignVoiceNote.at || ''),
-      durationSec: Number(body.assignVoiceNote.durationSec) || 0
+      durationSec: Number(body.assignVoiceNote.durationSec) || 0,
+      mimeType: String(body.assignVoiceNote.mimeType || '')
     };
   }
   var ss = getSS_();

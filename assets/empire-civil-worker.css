@@ -656,6 +656,25 @@ body:not(.civil-worker-mode) #workerApp {
   font-size: 12px;
   font-weight: 400;
 }
+.assign-voice-open-link {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+.assign-voice-open-link a {
+  color: var(--accent2);
+  font-weight: 600;
+}
+.assign-voice-play-err {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #C5504F;
+  line-height: 1.45;
+}
+.assign-voice-player audio {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 6px;
+}
 .trade-badge {
   display: inline-block;
   font-size: 11px;

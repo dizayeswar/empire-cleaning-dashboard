@@ -37,6 +37,15 @@ function dateOnly(s) {
   return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
 }
 
+/** Local calendar date as yyyy-MM-dd (avoids UTC drift from toISOString). */
+function empireLocalDateIso(d) {
+  var dt = d instanceof Date ? d : new Date();
+  var z = function (n) {
+    return String(n).padStart(2, '0');
+  };
+  return dt.getFullYear() + '-' + z(dt.getMonth() + 1) + '-' + z(dt.getDate());
+}
+
 function setEmpireLogos(theme) {
   var src = theme === 'dark' ? 'logo.png' : 'logo-light.png';
   document.querySelectorAll(

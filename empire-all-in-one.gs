@@ -26,6 +26,7 @@ var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
 var CIVIL_ASSIGNED_WORKERS_COL = 20;
 var CIVIL_DISPOSITION_COL = 21;
+var CIVIL_FIX_DELAY_COL = 22;
 var CIVIL_TRADE_IDS = {plumber:1, pipes:1, painting:1, tiles:1, wood:1};
 var CIVIL_WORKER_TEAM = {
   mohammed_luqman: 'wood',
@@ -165,7 +166,7 @@ function doPost(e) {
       'getWeekCoverage':'cleaning','markTaskWeek':'cleaning','getRangeCoverage':'cleaning',
       'getTaskPhotos':'cleaning','addTaskPhoto':'cleaning','addTaskPhotos':'cleaning','deleteTaskPhoto':'cleaning',
       'logTask':'cleaning','getTaskLog':'cleaning',
-      'addCivilIssue':'civil issue','updateCivilIssue':'civil issue','getCivilIssues':'civil issue','markCivilFixed':'civil issue','clearCivilIssues':'civil issue','deleteCivilIssue':'civil issue','assignCivilIssue':'civil issue','markCivilNotDept':'civil issue','restoreCivilIssue':'civil issue','reportWorkerLocation':'civil issue','getWorkerLocations':'civil issue','saveWorkerPushToken':'civil issue','testWorkerPush':'civil issue','debugWorkerPush':'civil issue',
+      'addCivilIssue':'civil issue','updateCivilIssue':'civil issue','getCivilIssues':'civil issue','markCivilFixed':'civil issue','clearCivilIssues':'civil issue','deleteCivilIssue':'civil issue','assignCivilIssue':'civil issue','markCivilNotDept':'civil issue','restoreCivilIssue':'civil issue','setCivilFixDelay':'civil issue','reportWorkerLocation':'civil issue','getWorkerLocations':'civil issue','saveWorkerPushToken':'civil issue','testWorkerPush':'civil issue','debugWorkerPush':'civil issue',
       'addElectricIssue':'electric issue','updateElectricIssue':'electric issue','getElectricIssues':'electric issue','markElectricFixed':'electric issue','clearElectricIssues':'electric issue','deleteElectricIssue':'electric issue',
       'addFireIssue':'fire','updateFireIssue':'fire','getFireIssues':'fire','markFireFixed':'fire','clearFireIssues':'fire','deleteFireIssue':'fire',
       'addHseInspection':'hse','updateHseInspection':'hse','getHseInspections':'hse','markHseResolved':'hse','clearHseInspections':'hse','deleteHseInspection':'hse',
@@ -185,7 +186,7 @@ function doPost(e) {
     body._authRole = String(auth.role || '').toLowerCase();
     body._authTrade = String(auth.trade || '').toLowerCase();
     if (body._authRole === 'worker') {
-      var workerBlocked = {addCivilIssue:1, updateCivilIssue:1, deleteCivilIssue:1, clearCivilIssues:1, assignCivilIssue:1, markCivilNotDept:1, restoreCivilIssue:1, getWorkerLocations:1, addElectricIssue:1, updateElectricIssue:1, deleteElectricIssue:1, clearElectricIssues:1, addFireIssue:1, updateFireIssue:1, deleteFireIssue:1, clearFireIssues:1};
+      var workerBlocked = {addCivilIssue:1, updateCivilIssue:1, deleteCivilIssue:1, clearCivilIssues:1, assignCivilIssue:1, markCivilNotDept:1, restoreCivilIssue:1, setCivilFixDelay:1, getWorkerLocations:1, addElectricIssue:1, updateElectricIssue:1, deleteElectricIssue:1, clearElectricIssues:1, addFireIssue:1, updateFireIssue:1, deleteFireIssue:1, clearFireIssues:1};
       if (workerBlocked[action]) return respond({ok:false,success:false,error:'not_allowed',message:'Not allowed for worker accounts.'});
     }
     if (action === 'reportWorkerLocation' && body._authRole !== 'worker') {
@@ -218,6 +219,7 @@ function doPost(e) {
     if (action==='assignCivilIssue') return respond(handleAssignCivilIssue(body, auth));
     if (action==='markCivilNotDept') return respond(handleRouteCivilNotDept(body, auth));
     if (action==='restoreCivilIssue') return respond(handleRestoreCivilIssue(body, auth));
+    if (action==='setCivilFixDelay') return respond(handleSetCivilFixDelay(body, auth));
     if (action==='reportWorkerLocation') return respond(handleReportWorkerLocation(body, auth));
     if (action==='getWorkerLocations') return respond(handleGetWorkerLocations(body, auth));
     if (action==='markCivilFixed') return respond(handleMarkFixed(body, CIVIL_SHEET, auth));
@@ -326,7 +328,7 @@ function tradeForUserRow_(row) {
 function ensureCivilIssueHeaders_(sheet) {
   if (!sheet) return;
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions','assignedWorkers','disposition']);
+    sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions','assignedWorkers','disposition','fixDelay']);
     return;
   }
   if (String(sheet.getRange(1, CIVIL_ASSIGNED_COL).getValue() || '') !== 'assignedGroup') {
@@ -343,6 +345,9 @@ function ensureCivilIssueHeaders_(sheet) {
   }
   if (String(sheet.getRange(1, CIVIL_DISPOSITION_COL).getValue() || '') !== 'disposition') {
     sheet.getRange(1, CIVIL_DISPOSITION_COL).setValue('disposition');
+  }
+  if (String(sheet.getRange(1, CIVIL_FIX_DELAY_COL).getValue() || '') !== 'fixDelay') {
+    sheet.getRange(1, CIVIL_FIX_DELAY_COL).setValue('fixDelay');
   }
 }
 function normalizeWorkerId_(raw) {
@@ -1385,7 +1390,7 @@ function handleAddIssue(body, sheetName) {
   var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
   var isCivil = (sheetName === CIVIL_SHEET);
   if (sheet.getLastRow()===0) {
-    if (isCivil) sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions','assignedWorkers','disposition']);
+    if (isCivil) sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num','assignedGroup','workersRequired','workerCompletions','assignedWorkers','disposition','fixDelay']);
     else sheet.appendRow(['id','project','building','floor','spot','issueType','note','date','photo','fixedPhoto','status','createdBy','createdAt','fixedBy','fixedAt','num']);
   } else if (isCivil) {
     ensureCivilIssueHeaders_(sheet);
@@ -1480,6 +1485,7 @@ function handleGetIssues(body, sheetName, auth) {
     var item = {id:String(rows[i][0]),num:Number(rows[i][ISSUE_NUM_COL-1]||0),project:String(rows[i][1]),building:String(rows[i][2]),floor:String(rows[i][3]),spot:String(rows[i][4]),issueType:String(rows[i][5]),note:String(rows[i][6]||''),date:ds,photo:String(rows[i][8]||''),fixedPhoto:(st==='fixed'?fp:(fixedPhotos.length?formatFixedPhotosForStorage_(fixedPhotos):'')),fixedPhotos:fixedPhotos,status:st,createdBy:String(rows[i][11]||''),createdAt:dtIssue_(rows[i][12]),fixedBy:String(rows[i][13]||''),fixedAt:dtIssue_(rows[i][14]),assignedGroup:assignedGroup};
     if (sheetName === CIVIL_SHEET) {
       item.disposition = String(rows[i][CIVIL_DISPOSITION_COL - 1] || '').trim();
+      item.fixDelay = String(rows[i][CIVIL_FIX_DELAY_COL - 1] || '').trim();
       item.workersRequired = workersRequired;
       item.workerCompletions = workerCompletions;
       item.workerDone = workerCompletions.length;
@@ -1961,6 +1967,7 @@ function handleRouteCivilNotDept(body, auth) {
       return {ok:false, error:'already_fixed', message:'This issue is already fixed.'};
     }
     sheet.getRange(i + 1, CIVIL_DISPOSITION_COL).setValue('not_civil');
+    sheet.getRange(i + 1, CIVIL_FIX_DELAY_COL).setValue('');
     sheet.getRange(i + 1, CIVIL_ASSIGNED_COL).setValue('');
     sheet.getRange(i + 1, CIVIL_ASSIGNED_WORKERS_COL).setValue('');
     sheet.getRange(i + 1, CIVIL_WORKERS_REQUIRED_COL).setValue(1);
@@ -1999,6 +2006,53 @@ function handleRestoreCivilIssue(body, auth) {
     sheet.getRange(i + 1, CIVIL_DISPOSITION_COL).setValue('');
     invalidateIssuesCache_(CIVIL_SHEET);
     return {ok:true, success:true, disposition:''};
+  }
+  return {ok:false, error:'Issue not found', message:'Issue not found on server. Refresh and try again.'};
+}
+
+function handleSetCivilFixDelay(body, auth) {
+  auth = enrichAuthRole_(auth || {});
+  var urow = getUserRowByName_(auth && auth.username);
+  var rp = computePerms_(urow ? urow[3] : auth.role, urow ? urow[4] : '');
+  if (rp.role !== 'admin' && rp.role !== 'editor') {
+    return {ok:false, error:'not_allowed', message:'Only editor or admin accounts can mark fix delays.'};
+  }
+  if (rp.perms.edit === false) {
+    return {ok:false, error:'not_allowed', message:'Your account cannot edit issues.'};
+  }
+  var id = String(body.id || '').trim();
+  if (!id) return {ok:false, error:'missing_id', message:'Issue id is required.'};
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(CIVIL_SHEET);
+  if (!sheet) return {ok:false, error:'Sheet not found'};
+  ensureCivilIssueHeaders_(sheet);
+  var rows = sheet.getDataRange().getValues();
+  var user = String((auth && auth.username) || '').trim();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) !== id) continue;
+    if (String(rows[i][10] || '') === 'fixed') {
+      return {ok:false, error:'already_fixed', message:'This issue is already fixed.'};
+    }
+    if (String(rows[i][CIVIL_DISPOSITION_COL - 1] || '').trim().toLowerCase() === 'not_civil') {
+      return {ok:false, error:'not_civil', message:'This issue is in Not Civil Department.'};
+    }
+    var current = String(rows[i][CIVIL_FIX_DELAY_COL - 1] || '').trim().toLowerCase();
+    var next = '';
+    if (body.toggle) {
+      next = current === 'month_plus' ? '' : 'month_plus';
+    } else {
+      next = String(body.fixDelay || '').trim().toLowerCase() === 'month_plus' ? 'month_plus' : '';
+    }
+    sheet.getRange(i + 1, CIVIL_FIX_DELAY_COL).setValue(next);
+    if (next === 'month_plus') {
+      var note = String(rows[i][6] || '');
+      var stamp = 'Fix delayed 1+ month — marked by ' + user + ' on ' + Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+      if (note.indexOf('Fix delayed 1+ month') === -1) {
+        sheet.getRange(i + 1, 7).setValue(note ? (note + ' | ' + stamp) : stamp);
+      }
+    }
+    invalidateIssuesCache_(CIVIL_SHEET);
+    return {ok:true, success:true, fixDelay:next};
   }
   return {ok:false, error:'Issue not found', message:'Issue not found on server. Refresh and try again.'};
 }
@@ -2179,7 +2233,7 @@ function handleMarkFixed(body, sheetName, auth) {
           return {ok:true, success:true, partial:true, workerDone:completions.length, workersRequired:workersRequired, workerCompletions:completions};
         }
         sheet.getRange(i+1,11).setValue('fixed');
-        var allBy = [];
+        if (sheetName === CIVIL_SHEET) sheet.getRange(i+1, CIVIL_FIX_DELAY_COL).setValue('');
         for (var c = 0; c < completions.length; c++) {
           var nm = String((completions[c] && completions[c].user) || '').trim();
           if (nm && allBy.indexOf(nm) === -1) allBy.push(nm);
@@ -2193,7 +2247,7 @@ function handleMarkFixed(body, sheetName, auth) {
       if (role !== 'worker' && body.fixedByName) fixedBy = String(body.fixedByName || fixedBy);
       sheet.getRange(i+1,10).setValue(stored);
       sheet.getRange(i+1,11).setValue('fixed');
-      sheet.getRange(i+1,14).setValue(fixedBy);
+      if (sheetName === CIVIL_SHEET) sheet.getRange(i+1, CIVIL_FIX_DELAY_COL).setValue('');
       sheet.getRange(i+1,15).setValue(new Date().toISOString());
       if (body.fixNote) sheet.getRange(i+1,7).setValue(String(rows[i][6]||'') + (rows[i][6] ? ' | ' : '') + 'Fix: ' + String(body.fixNote));
       invalidateIssuesCache_(sheetName);

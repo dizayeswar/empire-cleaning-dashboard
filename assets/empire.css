@@ -83,6 +83,15 @@ tr.issue-row { cursor:pointer; } tr.issue-row:hover { background:var(--row-hover
 .routed-away-banner { margin:12px 0; padding:12px 14px; border-radius:10px; background:rgba(214,137,16,0.12); border:1px solid rgba(214,137,16,0.35); color:var(--text); font-size:13px; line-height:1.45; }
 .route-not-civil-btn { background:#d68910; color:#fff; border:none; padding:10px 16px; border-radius:50px; font-weight:600; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:none; }
 .restore-civil-btn { background:#1d9e75; color:#fff; border:none; padding:10px 16px; border-radius:50px; font-weight:600; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:none; }
+.badge.fix-delayed { color:#5f6772; font-weight:700; }
+.issue-card-delayed { background:linear-gradient(180deg,#eceff3,#dfe3e8) !important; border-color:#b8bec8 !important; }
+.issue-row-delayed { background:#e8ebef !important; }
+html[data-theme="dark"] .issue-card-delayed { background:linear-gradient(180deg,#4a5058,#3d434b) !important; border-color:#6b7280 !important; }
+html[data-theme="dark"] .issue-row-delayed { background:#3d434b !important; }
+html[data-theme="dark"] .badge.fix-delayed { color:#c5cad3; }
+.fix-delayed-banner { margin:12px 0; padding:12px 14px; border-radius:10px; background:rgba(139,147,158,0.18); border:1px solid rgba(139,147,158,0.45); color:var(--text); font-size:13px; line-height:1.45; }
+.fix-delay-btn { background:#c5cad3; color:#fff; border:none; padding:10px 16px; border-radius:50px; font-weight:600; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:none; }
+.fix-delay-btn.active { background:#8b939e; }
 .thumb { width:54px; height:54px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--card-border); }
 .view-toggle { display:inline-flex; gap:4px; background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:var(--radius-sm); padding:3px; }
 .view-toggle-btn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:30px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-soft); cursor:pointer; padding:0; box-shadow:none; }

@@ -372,14 +372,22 @@ function workersBadgeHtml(r) {
   return '<span class="workers-badge">' + issueWorkerDone(r) + '/' + need + ' workers</span>';
 }
 function issueStatusBadgeHtml(r) {
-  if (issueIsRoutedAway(r)) return '<span class="badge routed-away">Not Civil Dept</span>';
-  if (r.status === 'fixed') return '<span class="badge fixed">' + checkIconHtml('currentColor') + ' Fixed</span>';
-  var done = issueWorkerDone(r);
-  var need = issueWorkersRequired(r);
-  if (need >= 2 && done > 0) {
-    return '<span class="badge partial">' + squareIconHtml('currentColor') + ' ' + done + '/' + need + ' done</span>';
+  var parts = [];
+  if (issueIsRoutedAway(r)) parts.push('<span class="badge routed-away">Not Civil Dept</span>');
+  else if (r.status === 'fixed') parts.push('<span class="badge fixed">' + checkIconHtml('currentColor') + ' Fixed</span>');
+  else {
+    var done = issueWorkerDone(r);
+    var need = issueWorkersRequired(r);
+    if (need >= 2 && done > 0) {
+      parts.push('<span class="badge partial">' + squareIconHtml('currentColor') + ' ' + done + '/' + need + ' done</span>');
+    } else {
+      parts.push('<span class="badge open">' + squareIconHtml('currentColor') + ' Open</span>');
+    }
   }
-  return '<span class="badge open">' + squareIconHtml('currentColor') + ' Open</span>';
+  if (isIssueFixDelayed(r) && r.status !== 'fixed' && !issueIsRoutedAway(r)) {
+    parts.push('<span class="badge fix-delayed">1+ month</span>');
+  }
+  return parts.join(' ');
 }
 function workerCompletionsBlockHtml(r) {
   if (!r || !r.workerCompletions || !r.workerCompletions.length) return '';
@@ -1701,6 +1709,40 @@ function issueMatchesIssueFilters(r, fp, fs, fm, fg, q) {
 function canRouteIssueAway(r) {
   return !!(ISSUE_CFG.actions && ISSUE_CFG.actions.routeNotCivil && PAGEPERMS.edit !== false && r && !issueIsRoutedAway(r) && r.status !== 'fixed');
 }
+function isIssueFixDelayed(r) {
+  return String((r && r.fixDelay) || '').toLowerCase() === 'month_plus';
+}
+function canToggleFixDelay(r) {
+  return !!(ISSUE_CFG.actions && ISSUE_CFG.actions.setFixDelay && PAGEPERMS.edit !== false && r && !issueIsRoutedAway(r) && r.status !== 'fixed');
+}
+function fixDelayIconHtml() {
+  return '<span class="nav-icon" style="width:13px;height:13px;"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>';
+}
+function toggleIssueFixDelay(id) {
+  var r = allIssues.find(function (x) { return x.id === id; });
+  if (!r || !canToggleFixDelay(r)) return;
+  var marking = !isIssueFixDelayed(r);
+  var msg = marking
+    ? 'Mark this issue as needing more than 1 month to fix?\n\nThe card will turn silver so everyone knows it cannot be fixed soon.'
+    : 'Remove the 1+ month delay mark from this issue?';
+  uiConfirm(msg).then(function (ok) {
+    if (!ok) return;
+    fetchJSONRetry({ action: ISSUE_CFG.actions.setFixDelay, id: id, toggle: true, token: issueToken() || '' }).then(function (d) {
+      if (d && d.error === 'Unknown action') {
+        throw new Error('Server not updated yet. Paste the latest empire-all-in-one.gs into Apps Script and deploy a new web app version.');
+      }
+      if (d && d.ok === false) {
+        if (empireAuthHandleInvalidSession_(d, issueSessionLogoutOpts())) return;
+        throw new Error(d.message || d.error || 'Could not update fix delay');
+      }
+      var it = allIssues.find(function (x) { return x.id === id; });
+      if (it) it.fixDelay = d && d.fixDelay ? d.fixDelay : (marking ? 'month_plus' : '');
+      closeIssueModal();
+      refreshAllIssueTabs();
+      uiAlert(marking ? '\u2705 Marked as needing 1+ month to fix.' : '\u2705 Delay mark removed.');
+    }).catch(function (e) { uiAlert('\u274c ' + (e.message || 'Could not update fix delay')); });
+  });
+}
 function routeAwayIconHtml() {
   return '<span class="nav-icon" style="width:13px;height:13px;"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></span>';
 }
@@ -1792,6 +1834,11 @@ function issueActionBtns(r, listMode) {
   if (canRouteIssueAway(r)) {
     h += '<button type="button" onclick="event.stopPropagation();routeIssueNotCivil(\'' + r.id + '\')" title="Not Civil Department — route elsewhere" style="background:#d68910;color:#fff;border:none;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:none;margin-right:6px;">' + routeAwayIconHtml() + '</button>';
   }
+  if (canToggleFixDelay(r)) {
+    var delayBg = isIssueFixDelayed(r) ? '#8b939e' : '#c5cad3';
+    var delayTitle = isIssueFixDelayed(r) ? 'Needs 1+ month — click to remove delay mark' : 'Needs 1+ month to fix — mark as delayed';
+    h += '<button type="button" onclick="event.stopPropagation();toggleIssueFixDelay(\'' + r.id + '\')" title="' + delayTitle + '" style="background:' + delayBg + ';color:#fff;border:none;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:none;margin-right:6px;">' + fixDelayIconHtml() + '</button>';
+  }
   if (PAGEPERMS.del !== false) {
     h += '<button type="button" onclick="event.stopPropagation();removeIssue(\'' + r.id + '\')" title="Delete issue" style="background:#C5504F;color:#fff;border:none;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:none;">' + trashIconHtml() + '</button>';
   }
@@ -1807,7 +1854,7 @@ function renderIssueListHtml(rows, listMode) {
     rows.forEach(function (r) {
       var sel = !!selectedIssueIds[r.id];
       var cardClick = issueSelectMode ? "toggleIssueSelected('" + r.id + "')" : "openIssue('" + r.id + "')";
-      h += '<div class="issue-card' + (sel ? ' selected' : '') + (issueSelectMode ? ' selecting' : '') + (listMode === 'routed' ? ' issue-card-routed' : '') + '" onclick="' + cardClick + '">';
+      h += '<div class="issue-card' + (sel ? ' selected' : '') + (issueSelectMode ? ' selecting' : '') + (listMode === 'routed' ? ' issue-card-routed' : '') + (isIssueFixDelayed(r) && r.status !== 'fixed' && listMode === 'civil' ? ' issue-card-delayed' : '') + '" onclick="' + cardClick + '">';
       if (issueSelectMode) {
         h += '<div class="issue-card-check" onclick="event.stopPropagation()"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation();toggleIssueSelected(\'' + r.id + '\')" aria-label="Select issue"></div>';
       }
@@ -1827,7 +1874,7 @@ function renderIssueListHtml(rows, listMode) {
   rows.forEach(function (r) {
     var sel = !!selectedIssueIds[r.id];
     var rowClick = issueSelectMode ? "toggleIssueSelected('" + r.id + "')" : "openIssue('" + r.id + "')";
-    h += '<tr class="issue-row' + (sel ? ' selected' : '') + (listMode === 'routed' ? ' issue-row-routed' : '') + '" onclick="' + rowClick + '"' + (sel ? ' style="background:var(--row-hover);"' : '') + '>';
+    h += '<tr class="issue-row' + (sel ? ' selected' : '') + (listMode === 'routed' ? ' issue-row-routed' : '') + (isIssueFixDelayed(r) && r.status !== 'fixed' && listMode === 'civil' ? ' issue-row-delayed' : '') + '" onclick="' + rowClick + '"' + (sel ? ' style="background:var(--row-hover);"' : '') + '>';
     if (issueSelectMode) h += '<td onclick="event.stopPropagation()"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation();toggleIssueSelected(\'' + r.id + '\')" aria-label="Select issue"></td>';
     h += '<td style="color:var(--text-faint);font-weight:700;white-space:nowrap;">#' + issueRef(r.num) + '</td><td>' + r.issueType + tradeBadgeHtml(r) + workersBadgeHtml(r) + workersCompletedSummaryHtml(r) + (r.note ? ' <span style="color:var(--text-faint);">(' + r.note + ')</span>' : '') + '</td><td>' + locStr(r) + '</td>';
     if (tradeGroups().length) h += '<td>' + (assignedWorkersDisplay(r) || tradeGroupLabel(r.assignedGroup) || 'Unassigned') + '</td>';
@@ -1858,6 +1905,10 @@ function renderIssues() {
   var routedTotal = countRoutedAwayIssues();
   if (routedTotal && civilNotCivilTabEnabled()) {
     teamBits += ' &nbsp;&mdash;&nbsp; <span style="color:#d68910;">' + routedTotal + ' in Not Civil Dept</span>';
+  }
+  var delayedCount = openAll.filter(function (r) { return isIssueFixDelayed(r); }).length;
+  if (delayedCount && ISSUE_CFG.actions && ISSUE_CFG.actions.setFixDelay) {
+    teamBits += ' &nbsp;&mdash;&nbsp; <span style="color:#8b939e;">' + delayedCount + ' need 1+ month</span>';
   }
   var h = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;"><p style="color:var(--text-soft);margin:0;">' + rows.length + ' issue(s)' + (fm ? (' in ' + fm) : '') + ' &nbsp;&mdash;&nbsp; <span style="color:var(--open-color);">' + squareIconHtml('var(--open-color)') + ' ' + oc + ' open</span> &nbsp;&mdash;&nbsp; <span style="color:#1d9e75;">' + checkIconHtml('#1d9e75') + ' ' + fc + ' fixed</span>' + teamBits + '</p>' + viewToggleHtml() + '</div>' + issueSelectToolbarHtml();
   if (rows.length === 0) h += '<p style="color:var(--text-faint);">No civil issues match.</p>';
@@ -1906,12 +1957,18 @@ function openIssue(id) {
   if (issueIsRoutedAway(r)) {
     h += '<div class="routed-away-banner"><strong>Not Civil Department</strong> — this issue was routed out of the Civil queue. Re-create it in the correct department (Electric, Fire, etc.).</div>';
   }
+  if (isIssueFixDelayed(r) && r.status !== 'fixed' && !issueIsRoutedAway(r)) {
+    h += '<div class="fix-delayed-banner"><strong>Needs 1+ month</strong> — this issue cannot be fixed soon. The card is marked silver until the delay is removed.</div>';
+  }
   if (r.status !== 'fixed' && !issueIsRoutedAway(r)) h += assignBoxHtml(r);
   h += workerCompletionsBlockHtml(r);
   h += '<div style="margin:12px 0 4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">';
   h += '<button type="button" onclick="shareIssueWhatsApp(\'' + r.id + '\')" style="background:#25D366;color:#fff;border:none;padding:10px 16px;border-radius:50px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:pointer;box-shadow:none;">' + whatsappIconHtml() + ' Share on WhatsApp</button>';
   if (canRouteIssueAway(r)) {
     h += '<button type="button" onclick="routeIssueNotCivil(\'' + r.id + '\')" class="route-not-civil-btn">' + routeAwayIconHtml() + ' Not Civil Department</button>';
+  }
+  if (canToggleFixDelay(r)) {
+    h += '<button type="button" onclick="toggleIssueFixDelay(\'' + r.id + '\')" class="fix-delay-btn' + (isIssueFixDelayed(r) ? ' active' : '') + '">' + fixDelayIconHtml() + (isIssueFixDelayed(r) ? ' Remove 1+ month mark' : ' Needs 1+ month') + '</button>';
   }
   if (issueIsRoutedAway(r) && PAGEPERMS.edit !== false && ISSUE_CFG.actions && ISSUE_CFG.actions.restoreCivil) {
     h += '<button type="button" onclick="restoreCivilIssue(\'' + r.id + '\')" class="restore-civil-btn">' + restoreCivilIconHtml() + ' Restore to Civil queue</button>';

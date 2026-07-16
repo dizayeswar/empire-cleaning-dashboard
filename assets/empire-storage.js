@@ -53,12 +53,12 @@ function empireStorageFilePath(folder, blob) {
 }
 
 function empireStorageAudioPath(folder, blob) {
-  var ext = 'webm';
+  var ext = 'wav';
   var mime = blob && blob.type ? blob.type.toLowerCase() : '';
-  if (mime.indexOf('ogg') !== -1) ext = 'ogg';
+  if (mime.indexOf('webm') !== -1) ext = 'webm';
+  else if (mime.indexOf('ogg') !== -1) ext = 'ogg';
   else if (mime.indexOf('mp4') !== -1 || mime.indexOf('m4a') !== -1) ext = 'm4a';
   else if (mime.indexOf('mpeg') !== -1 || mime.indexOf('mp3') !== -1) ext = 'mp3';
-  else if (mime.indexOf('wav') !== -1) ext = 'wav';
   var id = (window.crypto && crypto.randomUUID)
     ? crypto.randomUUID()
     : (Date.now() + '-' + Math.random().toString(36).slice(2, 10));
@@ -91,7 +91,7 @@ function empireUploadBlob(blob, folder, path, cb) {
     headers: {
       apikey: SUPABASE_CONFIG.anonKey,
       Authorization: 'Bearer ' + SUPABASE_CONFIG.anonKey,
-      'Content-Type': blob.type || 'application/octet-stream',
+      'Content-Type': blob.type || (String(uploadPath || path || '').slice(-4) === '.wav' ? 'audio/wav' : 'application/octet-stream'),
       'x-upsert': 'true'
     },
     body: blob

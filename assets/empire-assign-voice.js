@@ -1,7 +1,8 @@
-/* Civil issue assignment — voice note for workers */
+/* Civil issue assignment — voice note for workers (WAV = plays on iOS + Android) */
 
 var _assignVoiceDraft = {};
 var _assignVoiceActiveId = '';
+var _assignVoicePlayerCache = {};
 var ASSIGN_VOICE_MAX_SEC = 120;
 var ASSIGN_VOICE_WAV_RATE = 16000;
 
@@ -11,6 +12,10 @@ function assignVoiceMicIconHtml() {
 
 function assignVoiceStopIconHtml() {
   return '<span class="nav-icon" style="width:15px;height:15px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>';
+}
+
+function assignVoiceTrashIconHtml() {
+  return '<span class="nav-icon" style="width:14px;height:14px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></span>';
 }
 
 function assignVoiceFormatSec(sec) {
@@ -26,28 +31,6 @@ function assignVoiceNowStamp() {
   return now.getFullYear() + '-' + z(now.getMonth() + 1) + '-' + z(now.getDate()) + ' ' + z(now.getHours()) + ':' + z(now.getMinutes());
 }
 
-function assignVoiceIsApple_() {
-  var ua = navigator.userAgent || '';
-  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-
-function assignVoicePickRecordMime_() {
-  if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
-  var candidates = assignVoiceIsApple_()
-    ? ['audio/mp4', 'audio/aac', 'audio/webm;codecs=opus', 'audio/webm']
-    : ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
-  for (var i = 0; i < candidates.length; i++) {
-    if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
-  }
-  return '';
-}
-
-function assignVoiceShouldUseWav_(mime) {
-  if (!mime) return true;
-  var m = mime.toLowerCase();
-  return m.indexOf('mp4') === -1 && m.indexOf('aac') === -1 && m.indexOf('m4a') === -1;
-}
-
 function assignVoiceDraft_(issueId) {
   issueId = String(issueId || '');
   if (!_assignVoiceDraft[issueId]) {
@@ -56,11 +39,9 @@ function assignVoiceDraft_(issueId) {
       previewUrl: '',
       durationSec: 0,
       recording: false,
-      recorder: null,
       stream: null,
       timer: null,
       startedAt: 0,
-      mode: '',
       audioContext: null,
       audioProcessor: null,
       audioSource: null,
@@ -104,6 +85,7 @@ function assignVoiceEncodeWavBlob_(sampleChunks, sampleRate) {
   sampleRate = sampleRate || ASSIGN_VOICE_WAV_RATE;
   var total = 0;
   for (var i = 0; i < sampleChunks.length; i++) total += sampleChunks[i].length;
+  if (!total) return null;
   var buffer = new ArrayBuffer(44 + total * 2);
   var view = new DataView(buffer);
   function writeStr(off, str) {
@@ -140,23 +122,22 @@ function assignVoiceStopRecording_(issueId, silent) {
     clearInterval(draft.timer);
     draft.timer = null;
   }
-  if (draft.mode === 'wav' && draft.recording) {
+  if (draft.recording) {
     draft.recording = false;
     assignVoiceStopWavCapture_(draft);
     assignVoiceStopTracks_(draft);
     if (draft.wavSamples && draft.wavSamples.length) {
       draft.blob = assignVoiceEncodeWavBlob_(draft.wavSamples, ASSIGN_VOICE_WAV_RATE);
-      draft.durationSec = Math.max(1, Math.round((Date.now() - draft.startedAt) / 1000));
-      if (draft.previewUrl) {
-        try { URL.revokeObjectURL(draft.previewUrl); } catch (e) {}
+      if (draft.blob) {
+        draft.durationSec = Math.max(1, Math.round((Date.now() - draft.startedAt) / 1000));
+        if (draft.previewUrl) {
+          try { URL.revokeObjectURL(draft.previewUrl); } catch (e) {}
+        }
+        draft.previewUrl = URL.createObjectURL(draft.blob);
       }
-      draft.previewUrl = URL.createObjectURL(draft.blob);
     }
     draft.wavSamples = null;
-  } else if (draft.recorder && draft.recording) {
-    try { draft.recorder.stop(); } catch (e) {}
   }
-  draft.recording = false;
   if (_assignVoiceActiveId === issueId) _assignVoiceActiveId = '';
   if (!silent) assignVoiceRefreshUi(issueId);
 }
@@ -179,31 +160,165 @@ function assignVoiceEscapeAttr_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-function assignVoiceAudioHtml_(url, mimeType, playerId) {
-  var typeAttr = mimeType ? (' type="' + assignVoiceEscapeAttr_(mimeType) + '"') : '';
-  var h = '<div class="assign-voice-player"' + (playerId ? (' id="' + playerId + '"') : '') + '>';
-  h += '<audio class="assign-voice-audio" controls playsinline webkit-playsinline preload="auto">';
-  h += '<source src="' + assignVoiceEscapeAttr_(url) + '"' + typeAttr + '>';
-  h += '</audio>';
-  h += '<p class="assign-voice-open-link"><a href="' + assignVoiceEscapeAttr_(url) + '" target="_blank" rel="noopener">Open voice note</a> if playback does not start.</p>';
-  h += '<p class="assign-voice-play-err" style="display:none;">Could not play this voice note on your device. Tap Open voice note above, or ask the editor to re-record.</p>';
+function assignVoiceInlinePlayerHtml_(url, durationSec) {
+  var dur = Math.max(0, Number(durationSec) || 0);
+  var h = '<div class="assign-voice-inline-player" data-url="' + assignVoiceEscapeAttr_(url) + '" data-duration="' + dur + '">';
+  h += '<button type="button" class="assign-voice-play-btn" aria-label="Play voice note"><span class="assign-voice-play-icon">&#9654;</span> Play voice note</button>';
+  h += '<span class="assign-voice-play-time">' + (dur ? ('0:00 / ' + assignVoiceFormatSec(dur)) : 'Tap Play') + '</span>';
+  h += '<p class="assign-voice-play-err" style="display:none;">Could not play this voice note.</p>';
   h += '</div>';
   return h;
 }
 
+function assignVoicePlayerStop_(state) {
+  if (!state) return;
+  if (state.tickTimer) {
+    clearInterval(state.tickTimer);
+    state.tickTimer = null;
+  }
+  if (state.audio) {
+    try { state.audio.pause(); } catch (e) {}
+  }
+  state.playing = false;
+}
+
+function assignVoicePlayerUpdateBtn_(state, btn, iconEl, timeEl, totalSec) {
+  if (!btn) return;
+  if (state.loading) {
+    btn.disabled = true;
+    btn.innerHTML = 'Loading\u2026';
+    return;
+  }
+  btn.disabled = false;
+  if (state.playing) {
+    btn.innerHTML = '<span class="assign-voice-play-icon">\u23F8</span> Pause';
+  } else {
+    btn.innerHTML = '<span class="assign-voice-play-icon">\u9654;</span> Play voice note';
+  }
+  if (timeEl && state.audio && !isNaN(state.audio.currentTime)) {
+    var cur = Math.floor(state.audio.currentTime);
+    var tot = totalSec || (state.audio.duration && !isNaN(state.audio.duration) ? Math.floor(state.audio.duration) : 0);
+    timeEl.textContent = assignVoiceFormatSec(cur) + (tot ? (' / ' + assignVoiceFormatSec(tot)) : '');
+  }
+}
+
+function assignVoiceIsOldFormat_(url) {
+  var u = String(url || '').toLowerCase();
+  return u.indexOf('.webm') !== -1 || u.indexOf('.ogg') !== -1;
+}
+
+function assignVoiceLoadAudioForPlayer_(wrap, state, done) {
+  var url = wrap.getAttribute('data-url') || '';
+  if (!url) { done(new Error('Missing voice URL')); return; }
+  if (state.blobUrl) { done(null); return; }
+  if (url.indexOf('blob:') === 0) {
+    state.blobUrl = url;
+    state.audio = new Audio(url);
+    state.audio.playsInline = true;
+    state.audio.setAttribute('playsinline', '');
+    state.audio.setAttribute('webkit-playsinline', '');
+    done(null);
+    return;
+  }
+  var bindEnded = function () {
+    state.audio.addEventListener('ended', function () {
+      state.playing = false;
+      assignVoicePlayerUpdateBtn_(state, wrap.querySelector('.assign-voice-play-btn'), null, wrap.querySelector('.assign-voice-play-time'), Number(wrap.getAttribute('data-duration')) || 0);
+    });
+  };
+  var useDirectUrl = function () {
+    state.audio = new Audio(url);
+    state.audio.playsInline = true;
+    state.audio.setAttribute('playsinline', '');
+    state.audio.setAttribute('webkit-playsinline', '');
+    state.audio.preload = 'auto';
+    bindEnded();
+    done(null);
+  };
+  fetch(url, { mode: 'cors', cache: 'no-store' }).then(function (res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.blob();
+  }).then(function (blob) {
+    var type = blob.type || 'audio/wav';
+    if (type === 'application/octet-stream' || !type) {
+      blob = new Blob([blob], { type: 'audio/wav' });
+    }
+    state.blobUrl = URL.createObjectURL(blob);
+    state.audio = new Audio(state.blobUrl);
+    state.audio.playsInline = true;
+    state.audio.setAttribute('playsinline', '');
+    state.audio.setAttribute('webkit-playsinline', '');
+    bindEnded();
+    done(null);
+  }).catch(function () {
+    useDirectUrl();
+  });
+}
+
 function assignVoiceBindPlayers(root) {
   root = root || document;
-  root.querySelectorAll('.assign-voice-player').forEach(function (wrap) {
+  root.querySelectorAll('.assign-voice-inline-player').forEach(function (wrap) {
     if (wrap.getAttribute('data-voice-bound') === '1') return;
     wrap.setAttribute('data-voice-bound', '1');
-    var audio = wrap.querySelector('audio');
-    var err = wrap.querySelector('.assign-voice-play-err');
-    if (!audio) return;
-    audio.addEventListener('error', function () {
-      if (err) err.style.display = 'block';
-    });
-    audio.addEventListener('loadedmetadata', function () {
-      if (err) err.style.display = 'none';
+    var btn = wrap.querySelector('.assign-voice-play-btn');
+    var timeEl = wrap.querySelector('.assign-voice-play-time');
+    var errEl = wrap.querySelector('.assign-voice-play-err');
+    var totalSec = Number(wrap.getAttribute('data-duration')) || 0;
+    var state = { audio: null, blobUrl: '', playing: false, loading: false, tickTimer: null };
+    _assignVoicePlayerCache[wrap] = state;
+
+    btn.addEventListener('click', function () {
+      if (errEl) errEl.style.display = 'none';
+      var remoteUrl = wrap.getAttribute('data-url') || '';
+      if (/iphone|ipad|ipod/i.test(navigator.userAgent) && assignVoiceIsOldFormat_(remoteUrl)) {
+        if (errEl) {
+          errEl.textContent = 'This voice note uses an old format that iPhone cannot play. Ask the editor to open the issue and record again.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+      if (!state.audio && !state.loading) {
+        state.loading = true;
+        assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+        assignVoiceLoadAudioForPlayer_(wrap, state, function (e) {
+          state.loading = false;
+          if (e || !state.audio) {
+            if (errEl) errEl.style.display = 'block';
+            assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+            return;
+          }
+          assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+          state.audio.play().then(function () {
+            state.playing = true;
+            assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+            if (state.tickTimer) clearInterval(state.tickTimer);
+            state.tickTimer = setInterval(function () {
+              assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+            }, 250);
+          }).catch(function () {
+            if (errEl) errEl.style.display = 'block';
+          });
+        });
+        return;
+      }
+      if (!state.audio) return;
+      if (state.playing) {
+        state.audio.pause();
+        state.playing = false;
+        if (state.tickTimer) clearInterval(state.tickTimer);
+        assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+      } else {
+        state.audio.play().then(function () {
+          state.playing = true;
+          assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+          if (state.tickTimer) clearInterval(state.tickTimer);
+          state.tickTimer = setInterval(function () {
+            assignVoicePlayerUpdateBtn_(state, btn, null, timeEl, totalSec);
+          }, 250);
+        }).catch(function () {
+          if (errEl) errEl.style.display = 'block';
+        });
+      }
     });
   });
 }
@@ -214,19 +329,24 @@ function assignVoiceRefreshUi(issueId) {
   var draft = assignVoiceDraft_(issueId);
   var status = wrap.querySelector('.assign-voice-status');
   var timer = wrap.querySelector('.assign-voice-timer');
+  var live = wrap.querySelector('.assign-voice-recording-live');
+  var liveTime = wrap.querySelector('.assign-voice-live-time');
   var preview = wrap.querySelector('.assign-voice-preview');
   var recordBtn = wrap.querySelector('.assign-voice-record-btn');
   var stopBtn = wrap.querySelector('.assign-voice-stop-btn');
-  var clearBtn = wrap.querySelector('.assign-voice-clear-btn');
-  if (timer) timer.textContent = assignVoiceFormatSec(draft.durationSec);
+  var deleteBtn = wrap.querySelector('.assign-voice-delete-btn');
+  var t = assignVoiceFormatSec(draft.durationSec);
+  if (timer) timer.textContent = t;
+  if (liveTime) liveTime.textContent = t;
+  if (live) live.style.display = draft.recording ? 'flex' : 'none';
   if (status) {
-    if (draft.recording) status.textContent = 'Recording… tap Stop when finished.';
-    else if (draft.blob) status.textContent = 'New voice note ready — saved when you click Save assignment.';
+    if (draft.recording) status.textContent = 'Speak now — tap Stop when finished.';
+    else if (draft.blob) status.textContent = 'Preview your recording below, or delete and record again.';
     else status.textContent = 'Tap Record and speak instructions for the worker.';
   }
   if (preview) {
     if (draft.blob && draft.previewUrl) {
-      preview.innerHTML = assignVoiceAudioHtml_(draft.previewUrl, draft.blob.type || 'audio/wav');
+      preview.innerHTML = assignVoiceInlinePlayerHtml_(draft.previewUrl, draft.durationSec);
       preview.style.display = 'block';
       assignVoiceBindPlayers(preview);
     } else {
@@ -236,58 +356,16 @@ function assignVoiceRefreshUi(issueId) {
   }
   if (recordBtn) recordBtn.disabled = !!draft.recording;
   if (stopBtn) stopBtn.disabled = !draft.recording;
-  if (clearBtn) clearBtn.style.display = (draft.blob && !draft.recording) ? 'inline-flex' : 'none';
+  if (deleteBtn) deleteBtn.style.display = (draft.blob && !draft.recording) ? 'inline-flex' : 'none';
 }
 
-function assignVoiceStartMediaRecorder_(issueId, stream, draft, mime) {
-  var chunks = [];
-  var recorder;
-  try {
-    recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-  } catch (e) {
-    assignVoiceStopTracks_(draft);
-    assignVoiceStartWavRecord_(issueId, stream, draft);
-    return;
-  }
-  draft.recorder = recorder;
-  draft.mode = 'mediarecorder';
-  draft.recording = true;
-  draft.startedAt = Date.now();
-  draft.durationSec = 0;
-  _assignVoiceActiveId = issueId;
-  recorder.ondataavailable = function (ev) {
-    if (ev.data && ev.data.size) chunks.push(ev.data);
-  };
-  recorder.onstop = function () {
-    assignVoiceStopTracks_(draft);
-    draft.recording = false;
-    if (_assignVoiceActiveId === issueId) _assignVoiceActiveId = '';
-    if (!chunks.length) {
-      assignVoiceRefreshUi(issueId);
-      return;
-    }
-    var type = (chunks[0] && chunks[0].type) || mime || 'audio/wav';
-    draft.blob = new Blob(chunks, { type: type });
-    draft.durationSec = Math.max(1, Math.round((Date.now() - draft.startedAt) / 1000));
-    if (draft.previewUrl) {
-      try { URL.revokeObjectURL(draft.previewUrl); } catch (e) {}
-    }
-    draft.previewUrl = URL.createObjectURL(draft.blob);
-    assignVoiceRefreshUi(issueId);
-  };
-  recorder.start(250);
-  assignVoiceStartTimer_(issueId, draft);
-  assignVoiceRefreshUi(issueId);
-}
-
-function assignVoiceStartWavRecord_(issueId, stream, draft) {
+function assignVoiceStartWavCapture_(issueId, stream, draft) {
   var AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) {
     assignVoiceStopTracks_(draft);
     alert('Could not start recording on this device.');
     return;
   }
-  draft.mode = 'wav';
   draft.recording = true;
   draft.startedAt = Date.now();
   draft.durationSec = 0;
@@ -298,16 +376,26 @@ function assignVoiceStartWavRecord_(issueId, stream, draft) {
   } catch (e) {
     draft.audioContext = new AudioCtx();
   }
-  draft.audioSource = draft.audioContext.createMediaStreamSource(stream);
-  draft.audioProcessor = draft.audioContext.createScriptProcessor(4096, 1, 1);
-  draft.audioProcessor.onaudioprocess = function (ev) {
-    if (!draft.recording) return;
-    draft.wavSamples.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+  var wire = function () {
+    draft.audioSource = draft.audioContext.createMediaStreamSource(stream);
+    draft.audioProcessor = draft.audioContext.createScriptProcessor(4096, 1, 1);
+    draft.audioProcessor.onaudioprocess = function (ev) {
+      if (!draft.recording) return;
+      draft.wavSamples.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+    };
+    var silent = draft.audioContext.createGain();
+    silent.gain.value = 0;
+    draft.audioSource.connect(draft.audioProcessor);
+    draft.audioProcessor.connect(silent);
+    silent.connect(draft.audioContext.destination);
+    assignVoiceStartTimer_(issueId, draft);
+    assignVoiceRefreshUi(issueId);
   };
-  draft.audioSource.connect(draft.audioProcessor);
-  draft.audioProcessor.connect(draft.audioContext.destination);
-  assignVoiceStartTimer_(issueId, draft);
-  assignVoiceRefreshUi(issueId);
+  if (draft.audioContext.state === 'suspended') {
+    draft.audioContext.resume().then(wire).catch(function () { wire(); });
+  } else {
+    wire();
+  }
 }
 
 function assignVoiceStartTimer_(issueId, draft) {
@@ -316,28 +404,23 @@ function assignVoiceStartTimer_(issueId, draft) {
     draft.durationSec = Math.floor((Date.now() - draft.startedAt) / 1000);
     assignVoiceRefreshUi(issueId);
     if (draft.durationSec >= ASSIGN_VOICE_MAX_SEC) assignVoiceStopRecord(issueId);
-  }, 500);
+  }, 200);
 }
 
 function assignVoiceStartRecord(issueId) {
   issueId = String(issueId || '');
   if (!issueId) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Voice notes need microphone access. Use Chrome or Edge on a phone or computer with a mic.');
+    alert('Voice notes need microphone access. Use Chrome or Safari on your phone.');
     return;
   }
   assignVoiceCloseActive_();
   var draft = assignVoiceDraft_(issueId);
   assignVoiceReleaseDraft_(draft);
   assignVoiceStopWavCapture_(draft);
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (stream) {
     draft.stream = stream;
-    var mime = assignVoicePickRecordMime_();
-    if (mime && !assignVoiceShouldUseWav_(mime)) {
-      assignVoiceStartMediaRecorder_(issueId, stream, draft, mime);
-    } else {
-      assignVoiceStartWavRecord_(issueId, stream, draft);
-    }
+    assignVoiceStartWavCapture_(issueId, stream, draft);
   }).catch(function () {
     alert('Microphone permission denied. Allow the mic in your browser settings and try again.');
   });
@@ -355,13 +438,9 @@ function assignVoiceNoteDisplayHtml(note, opts) {
   var by = note.by ? (' from ' + note.by) : '';
   var at = note.at ? (' · ' + dateOnly(note.at)) : '';
   var dur = note.durationSec ? (' · ' + assignVoiceFormatSec(note.durationSec)) : '';
-  var mime = note.mimeType || '';
-  if (!mime && /\.webm/i.test(note.url)) mime = 'audio/webm';
-  if (!mime && /\.wav/i.test(note.url)) mime = 'audio/wav';
-  if (!mime && /\.m4a|\.mp4/i.test(note.url)) mime = 'audio/mp4';
   var h = '<div class="assign-voice-playback' + (opts.worker ? ' assign-voice-playback-worker' : '') + '">';
   h += '<div class="assign-voice-playback-label"><strong>Voice note' + by + '</strong><span class="assign-voice-playback-meta">' + at + dur + '</span></div>';
-  h += assignVoiceAudioHtml_(note.url, mime);
+  h += assignVoiceInlinePlayerHtml_(note.url, note.durationSec || 0);
   h += '</div>';
   return h;
 }
@@ -374,11 +453,12 @@ function assignVoiceBoxHtml(issueId, existingNote) {
     h += assignVoiceNoteDisplayHtml(existingNote, { existing: true });
     h += '<p class="assign-voice-replace-hint">Record below to replace the current voice note when you save.</p>';
   }
+  h += '<div class="assign-voice-recording-live" style="display:none;"><span class="assign-voice-live-dot"></span><span class="assign-voice-live-time">0:00</span><span class="assign-voice-live-label">Recording</span></div>';
   h += '<div class="assign-voice-controls">';
   h += '<button type="button" class="assign-voice-record-btn" onclick="assignVoiceStartRecord(\'' + issueId + '\')">' + assignVoiceMicIconHtml() + ' Record</button>';
   h += '<button type="button" class="assign-voice-stop-btn" onclick="assignVoiceStopRecord(\'' + issueId + '\')" disabled>' + assignVoiceStopIconHtml() + ' Stop</button>';
   h += '<span class="assign-voice-timer">0:00</span>';
-  h += '<button type="button" class="assign-voice-clear-btn" onclick="assignVoiceClearDraft(\'' + issueId + '\')" style="display:none;">Clear</button>';
+  h += '<button type="button" class="assign-voice-delete-btn" onclick="assignVoiceClearDraft(\'' + issueId + '\')" style="display:none;">' + assignVoiceTrashIconHtml() + ' Delete recording</button>';
   h += '</div>';
   h += '<p class="assign-voice-status">Tap Record and speak instructions for the worker.</p>';
   h += '<div class="assign-voice-preview" style="display:none;"></div>';
@@ -392,7 +472,10 @@ function uploadAssignVoiceForIssue(issueId) {
   if (!empireStorageConfigured()) {
     return Promise.reject(new Error('Supabase is not configured — cannot upload voice note.'));
   }
-  return empireUploadAudioAsync(draft.blob, 'civil-assign-voice').then(function (url) {
+  var uploadBlob = draft.blob.type === 'audio/wav'
+    ? draft.blob
+    : new Blob([draft.blob], { type: 'audio/wav' });
+  return empireUploadAudioAsync(uploadBlob, 'civil-assign-voice').then(function (url) {
     if (!url) {
       throw new Error(_lastEmpireUploadError || 'Voice note upload failed');
     }
@@ -401,7 +484,7 @@ function uploadAssignVoiceForIssue(issueId) {
       by: empireGetUser() || '',
       at: assignVoiceNowStamp(),
       durationSec: draft.durationSec || 0,
-      mimeType: draft.blob.type || 'audio/wav'
+      mimeType: 'audio/wav'
     };
   });
 }

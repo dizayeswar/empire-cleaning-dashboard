@@ -144,13 +144,22 @@ body:not(.civil-worker-mode) #workerApp {
   background: var(--input-bg);
   color: var(--text);
 }
-.worker-field-paste {
-  border: 2px dashed var(--card-border);
-  border-radius: 10px;
-  padding: 14px;
+.worker-field-photo-btn {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--accent2);
+  background: var(--panel);
+  color: var(--accent2);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.worker-field-photo-status {
+  min-height: 18px;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--text-soft);
-  background: var(--task-bg);
 }
 .worker-field-preview-img {
   width: 100%;

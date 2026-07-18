@@ -71,18 +71,28 @@ function workerFieldReportSwitchTab_(tab) {
   if (tab === 'report') workerFieldReportLoadMine_();
 }
 
+function workerFieldReportPickPhoto_() {
+  var input = document.getElementById('wfrFile');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
 function workerFieldReportClearForm_(resetMsg) {
   _wfrPhotoUrl = '';
   _wfrUploading = false;
   var place = document.getElementById('wfrPlace');
   var note = document.getElementById('wfrNote');
   var img = document.getElementById('wfrImage');
-  var area = document.getElementById('wfrImageArea');
+  var status = document.getElementById('wfrPhotoStatus');
   var msg = document.getElementById('wfrFormMsg');
   if (place) place.value = '';
   if (note) note.value = '';
-  if (img) img.style.display = 'none';
-  if (area) area.innerHTML = 'Tap to paste a photo (Ctrl+V) or use the camera button below';
+  if (img) {
+    img.style.display = 'none';
+    img.removeAttribute('src');
+  }
+  if (status) status.textContent = '';
   if (typeof assignVoiceClearDraft === 'function') assignVoiceClearDraft(workerFieldReportVoiceId_());
   if (resetMsg !== false && msg) {
     msg.textContent = '';
@@ -92,8 +102,8 @@ function workerFieldReportClearForm_(resetMsg) {
 
 function workerFieldReportProcessPhoto_(file) {
   if (!file) return;
-  var area = document.getElementById('wfrImageArea');
-  if (area) area.innerHTML = '\u23F3 Uploading\u2026';
+  var status = document.getElementById('wfrPhotoStatus');
+  if (status) status.textContent = '\u23F3 Uploading\u2026';
   _wfrUploading = true;
   empireCompressImage(file, workerFieldReportPhotoFolder_(), function (url) {
     _wfrUploading = false;
@@ -104,9 +114,9 @@ function workerFieldReportProcessPhoto_(file) {
         im.src = url;
         im.style.display = 'block';
       }
-      if (area) area.innerHTML = '\u2705 Photo ready';
-    } else if (area) {
-      area.innerHTML = '\u274C ' + (_lastEmpireUploadError || 'Upload failed — try again');
+      if (status) status.textContent = '\u2705 Photo ready — tap Camera / gallery to replace';
+    } else if (status) {
+      status.textContent = '\u274C ' + (_lastEmpireUploadError || 'Upload failed — try again');
     }
   }, { maxSize: 1400, quality: 0.7 });
 }
@@ -115,18 +125,6 @@ function workerFieldReportHandleFile_(e) {
   var f = e.target.files && e.target.files[0];
   if (f) workerFieldReportProcessPhoto_(f);
   e.target.value = '';
-}
-
-function workerFieldReportHandlePaste_(e) {
-  var items = e.clipboardData && e.clipboardData.items;
-  if (!items) return;
-  for (var i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf('image') !== -1) {
-      e.preventDefault();
-      workerFieldReportProcessPhoto_(items[i].getAsFile());
-      return;
-    }
-  }
 }
 
 function workerFieldReportLoadMine_() {
@@ -241,4 +239,4 @@ function workerFieldReportSubmit_() {
 window.workerFieldReportSwitchTab = workerFieldReportSwitchTab_;
 window.workerFieldReportSubmit = workerFieldReportSubmit_;
 window.workerFieldReportHandleFile = workerFieldReportHandleFile_;
-window.workerFieldReportHandlePaste = workerFieldReportHandlePaste_;
+window.workerFieldReportPickPhoto = workerFieldReportPickPhoto_;

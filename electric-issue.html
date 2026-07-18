@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://api.imgbb.com">
 <title>Electric Issues — Empire World</title>
 <link rel="stylesheet" href="assets/empire.css?v=2026-07-18-electric-workers">
-<link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-18-field-reports">
+<link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-18-photo-picker">
 </head>
 <body>
 <div class="login-page show" id="loginPage">
@@ -60,11 +60,9 @@
       <label class="worker-field-label" for="wfrNote">Note</label>
       <textarea id="wfrNote" class="worker-field-textarea" rows="3" placeholder="What did you find or do?"></textarea>
       <label class="worker-field-label">Photo (optional)</label>
-      <div class="worker-field-photo-actions">
-        <button type="button" class="worker-loc-enable-btn" onclick="document.getElementById('wfrFile').click()">Camera / upload</button>
-        <input type="file" id="wfrFile" accept="image/*" capture="environment" style="display:none" onchange="workerFieldReportHandleFile(event)">
-      </div>
-      <div class="worker-field-paste" id="wfrImageArea" tabindex="0" onpaste="workerFieldReportHandlePaste(event)">Tap to paste a photo (Ctrl+V) or use the camera button below</div>
+      <button type="button" class="worker-field-photo-btn" onclick="workerFieldReportPickPhoto()">Camera / gallery</button>
+      <input type="file" id="wfrFile" accept="image/*" style="display:none" onchange="workerFieldReportHandleFile(event)">
+      <p id="wfrPhotoStatus" class="worker-field-photo-status" aria-live="polite"></p>
       <img id="wfrImage" class="worker-field-preview-img" style="display:none" alt="">
       <div id="workerFieldVoiceHost" class="worker-field-voice-host"></div>
       <button type="button" id="wfrSubmitBtn" class="worker-field-submit" onclick="workerFieldReportSubmit()">Send to Electrical Department</button>
@@ -218,7 +216,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 <script src="assets/empire-push.js?v=2026-07-18-electric-workers"></script>
 <script src="assets/empire-assign-voice.js?v=2026-07-18-field-reports"></script>
-<script src="assets/empire-worker-field-report.js?v=2026-07-18-field-reports"></script>
+<script src="assets/empire-worker-field-report.js?v=2026-07-18-photo-picker"></script>
 <script src="assets/issue-tracker.js?v=2026-07-18-field-reports"></script>
 <script src="assets/issue-excel-export.js?v=2026-07-18-electric-workers"></script>
 <script src="assets/issue-recycle-bin.js?v=2026-07-18-electric-workers"></script>

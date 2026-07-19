@@ -164,6 +164,23 @@ body:not(.civil-worker-mode) #workerApp {
   font-weight: 700;
   cursor: pointer;
 }
+.worker-field-photo-btn-secondary {
+  border-color: var(--card-border);
+  color: var(--text);
+  background: var(--input-bg, #fff);
+}
+.worker-field-refundable-note {
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(230, 126, 34, 0.08);
+  border: 1px solid rgba(230, 126, 34, 0.18);
+}
+.worker-field-invoice-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .worker-field-photo-status {
   min-height: 18px;
   margin: 8px 0 0;
@@ -222,6 +239,63 @@ body:not(.civil-worker-mode) #workerApp {
   border-radius: 12px;
   background: var(--card, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.worker-field-my-card-needs-invoice {
+  border-color: rgba(230, 126, 34, 0.45);
+  box-shadow: 0 0 0 1px rgba(230, 126, 34, 0.12);
+  cursor: pointer;
+}
+.worker-field-my-invoice-missing {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c0650a;
+  line-height: 1.35;
+}
+.worker-field-my-invoice-ok {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d9e75;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(29, 158, 117, 0.1);
+  border: 1px solid rgba(29, 158, 117, 0.18);
+}
+.worker-field-invoice-modal {
+  padding: 14px 14px 24px;
+}
+.worker-field-invoice-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.worker-field-invoice-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+.worker-field-invoice-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.worker-field-invoice-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+.worker-field-invoice-job-thumb {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 10px;
+  border: 2px solid var(--card-border);
 }
 .worker-field-my-media {
   width: 72px;

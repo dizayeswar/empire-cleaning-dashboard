@@ -204,7 +204,7 @@ function doPost(e) {
       'getElectricalSummary':'electrical department','saveElectricalSummary':'electrical department',
       'getElectricWorkerReports':'electrical department','transferElectricWorkerReport':'electrical department',
       'transferElectricIssueCompletion':'electrical department',
-      'addElectricWorkerReport':'electric issue',
+      'addElectricWorkerReport':'electric issue','updateElectricWorkerReportInvoice':'electric issue',
       'addCivilJob':'civil department','getCivilJobs':'civil department','updateCivilJob':'civil department',
       'deleteCivilJob':'civil department','clearCivilJobs':'civil department',
       'getCivilSummary':'civil department','saveCivilSummary':'civil department'
@@ -244,6 +244,10 @@ function doPost(e) {
     }
     if (action === 'addElectricWorkerReport') {
       if (body._authRole !== 'worker') return respond({ok:false,success:false,error:'not_allowed',message:'Only electric workers can submit field reports.'});
+      if (!isElectricWorkerId_(body.username)) return respond({ok:false,success:false,error:'not_allowed',message:'This account is not an electric field worker.'});
+    }
+    if (action === 'updateElectricWorkerReportInvoice') {
+      if (body._authRole !== 'worker') return respond({ok:false,success:false,error:'not_allowed',message:'Only electric workers can add invoice photos.'});
       if (!isElectricWorkerId_(body.username)) return respond({ok:false,success:false,error:'not_allowed',message:'This account is not an electric field worker.'});
     }
     var adminOnly = {saveUiSettings:1, clearElectricalJobs:1, clearCivilJobs:1, clearCivilIssues:1, clearElectricIssues:1, clearFireIssues:1, clearHseInspections:1, clearAll:1, getTrash:1, restoreTrash:1, purgeTrash:1};
@@ -310,6 +314,7 @@ function doPost(e) {
     if (action==='saveElectricalSummary') return respond(handleSaveElectricalSummary(body));
     if (action==='getElectricWorkerReports') return respond(handleGetElectricWorkerReports(body, auth));
     if (action==='addElectricWorkerReport') return respond(handleAddElectricWorkerReport(body, auth));
+    if (action==='updateElectricWorkerReportInvoice') return respond(handleUpdateElectricWorkerReportInvoice(body, auth));
     if (action==='transferElectricWorkerReport') return respond(handleTransferElectricWorkerReport(body, auth));
     if (action==='transferElectricIssueCompletion') return respond(handleTransferElectricIssueCompletion(body, auth));
     if (action==='addCivilJob') return respond(handleAddCivilJob(body));
@@ -2785,7 +2790,7 @@ function electricReportMonthOfDate_(dateStr) {
 
 function ensureElectricWorkerReportsSheet_(sheet) {
   if (!sheet) return;
-  var headers = ['id','date','place','note','photo','voiceNote','reportedBy','workerName','createdAt','amount','reportType','status','transferredJobId','editedNote','transferredAt','transferredBy','materials'];
+  var headers = ['id','date','place','note','photo','voiceNote','reportedBy','workerName','createdAt','amount','reportType','status','transferredJobId','editedNote','transferredAt','transferredBy','materials','invoicePhoto'];
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
     return;
@@ -2801,6 +2806,7 @@ function handleAddElectricWorkerReport(body, auth) {
   var place = String(body.place || body.location || '').trim();
   var note = String(body.note || body.notes || '').trim();
   var photo = String(body.photo || '').trim();
+  var invoicePhoto = String(body.invoicePhoto || '').trim();
   var voiceNote = body.voiceNote || null;
   if (voiceNote && typeof voiceNote === 'object') voiceNote = formatAssignVoiceNote_(voiceNote);
   else voiceNote = String(voiceNote || '').trim();
@@ -2818,6 +2824,9 @@ function handleAddElectricWorkerReport(body, auth) {
   var workerName = String(body.workerName || body.displayName || username || '').trim();
   var amount = parseElectricWorkerReportAmount_(body);
   var reportType = electricWorkerReportTypeFromAmount_(amount);
+  if (amount > 0 && !photo) {
+    return {ok:false,success:false,error:'missing_job_photo',message:'Refundable reports need a job photo before sending.'};
+  }
   var materials = String(body.materials || '').trim();
   var id = body.id || ('ewr-' + now.getTime());
   sheet.appendRow([
@@ -2837,9 +2846,49 @@ function handleAddElectricWorkerReport(body, auth) {
     '',
     '',
     '',
-    materials
+    materials,
+    invoicePhoto
   ]);
   return {ok:true,success:true,id:id};
+}
+
+function handleUpdateElectricWorkerReportInvoice(body, auth) {
+  var id = String(body.id || '').trim();
+  var invoicePhoto = String(body.invoicePhoto || '').trim();
+  if (!id) return {ok:false,success:false,error:'missing_id',message:'Report id is required.'};
+  if (!invoicePhoto) return {ok:false,success:false,error:'missing_invoice',message:'Choose an invoice photo before saving.'};
+
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(ELECTRIC_WORKER_REPORTS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return {ok:false,success:false,error:'not_found',message:'Report not found.'};
+  ensureElectricWorkerReportsSheet_(sheet);
+
+  var found = findElectricWorkerReportRow_(sheet, id);
+  if (!found) return {ok:false,success:false,error:'not_found',message:'Report not found.'};
+  var row = found.row;
+  var reportedBy = normalizeWorkerId_(row[6]);
+  var workerUser = normalizeWorkerId_(auth && auth.username);
+  if (reportedBy !== workerUser) {
+    return {ok:false,success:false,error:'not_allowed',message:'You can only add an invoice photo to your own report.'};
+  }
+
+  var amountNum = parseFloat(row[9]);
+  if (isNaN(amountNum) || amountNum < 0) amountNum = 0;
+  var reportType = String(row[10] || '').trim().toLowerCase();
+  if (reportType !== 'refundable' && reportType !== 'maintenance') {
+    reportType = electricWorkerReportTypeFromAmount_(amountNum);
+  }
+  if (reportType !== 'refundable') {
+    return {ok:false,success:false,error:'not_refundable',message:'Invoice photos are only for refundable reports.'};
+  }
+
+  var status = String(row[11] || 'pending').trim().toLowerCase();
+  if (status === 'transferred') {
+    return {ok:false,success:false,error:'already_transferred',message:'This report was already added to the monthly report.'};
+  }
+
+  sheet.getRange(found.rowIdx, 18).setValue(invoicePhoto);
+  return {ok:true,success:true,id:id,invoicePhoto:invoicePhoto};
 }
 
 function handleGetElectricWorkerReports(body, auth) {
@@ -2884,6 +2933,7 @@ function handleGetElectricWorkerReports(body, auth) {
       transferredAt: dtIssue_(rows[i][14]),
       transferredBy: String(rows[i][15] || ''),
       materials: String(rows[i][16] || ''),
+      invoicePhoto: String(rows[i][17] || ''),
       reportMonth: electricReportMonthOfDate_(ds)
     });
   }

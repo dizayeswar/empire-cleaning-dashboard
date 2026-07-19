@@ -346,6 +346,21 @@ tr.job-row:hover {
   margin-bottom: 6px;
 }
 
+.field-report-invoice-missing {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c0650a;
+  margin-bottom: 6px;
+}
+
+.field-report-invoice-missing-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c0650a;
+  font-weight: 600;
+}
+
 .field-report-modal-amount {
   color: var(--c-money);
 }

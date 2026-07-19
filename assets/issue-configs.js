@@ -193,7 +193,8 @@ var ISSUE_CONFIGS = {
       voiceDraftId: 'electric-field-report',
       actions: {
         add: 'addElectricWorkerReport',
-        get: 'getElectricWorkerReports'
+        get: 'getElectricWorkerReports',
+        updateInvoice: 'updateElectricWorkerReportInvoice'
       },
       ui: {
         jobsTab: 'Assigned jobs',

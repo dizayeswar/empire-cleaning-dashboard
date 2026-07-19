@@ -1,10 +1,15 @@
 /* Electric field worker — self-reported items for Electrical Department */
 
 var _wfrPhotoUrl = '';
+var _wfrInvoicePhotoUrl = '';
 var _wfrUploading = false;
+var _wfrInvoiceUploading = false;
 var _wfrSubmitting = false;
+var _wfrInvoiceSaving = false;
 var _wfrReports = [];
 var _wfrActiveTab = 'jobs';
+var _wfrInvoiceModalId = '';
+var _wfrInvoiceModalUrl = '';
 
 function workerFieldReportCfg_() {
   return (ISSUE_CFG && ISSUE_CFG.workerFieldReport) || null;
@@ -86,6 +91,21 @@ function workerFieldReportAmountLabel_(amount) {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' IQD';
 }
 
+function workerFieldReportNeedsInvoice_(r) {
+  return workerFieldReportType_(r) === 'refundable'
+    && String(r.status || 'pending').toLowerCase() === 'pending'
+    && !String(r.invoicePhoto || '').trim();
+}
+
+function workerFieldReportSyncRefundableUi_() {
+  var amountEl = document.getElementById('wfrAmount');
+  var refundable = amountEl ? workerFieldReportParseAmount_(amountEl.value) > 0 : false;
+  var block = document.getElementById('wfrRefundablePhotos');
+  var invoiceBlock = document.getElementById('wfrInvoiceBlock');
+  if (block) block.style.display = refundable ? '' : 'none';
+  if (invoiceBlock) invoiceBlock.style.display = refundable ? '' : 'none';
+}
+
 function workerFieldReportInit_() {
   if (!workerFieldReportEnabled_() || !isCivilWorker()) return;
   var bar = document.getElementById('workerTabBar');
@@ -103,9 +123,13 @@ function workerFieldReportInit_() {
     amount.placeholder = workerFieldReportUi_('amountPlaceholder', 'IQD — leave empty for maintenance');
     if (!amount.dataset.wfrAmountBound) {
       amount.dataset.wfrAmountBound = '1';
-      amount.addEventListener('input', workerFieldReportHandleAmountInput_);
+      amount.addEventListener('input', function (e) {
+        workerFieldReportHandleAmountInput_(e);
+        workerFieldReportSyncRefundableUi_();
+      });
     }
   }
+  workerFieldReportSyncRefundableUi_();
   workerFieldReportMountVoice_();
   workerFieldReportClearForm_(false);
   workerFieldReportLoadMine_();
@@ -143,13 +167,17 @@ function workerFieldReportPickPhoto_() {
 
 function workerFieldReportClearForm_(resetMsg) {
   _wfrPhotoUrl = '';
+  _wfrInvoicePhotoUrl = '';
   _wfrUploading = false;
+  _wfrInvoiceUploading = false;
   var place = document.getElementById('wfrPlace');
   var note = document.getElementById('wfrNote');
   var materials = document.getElementById('wfrMaterials');
   var amount = document.getElementById('wfrAmount');
   var img = document.getElementById('wfrImage');
+  var invoiceImg = document.getElementById('wfrInvoiceImage');
   var status = document.getElementById('wfrPhotoStatus');
+  var invoiceStatus = document.getElementById('wfrInvoiceStatus');
   var msg = document.getElementById('wfrFormMsg');
   if (place) place.value = '';
   if (note) note.value = '';
@@ -159,7 +187,13 @@ function workerFieldReportClearForm_(resetMsg) {
     img.style.display = 'none';
     img.removeAttribute('src');
   }
+  if (invoiceImg) {
+    invoiceImg.style.display = 'none';
+    invoiceImg.removeAttribute('src');
+  }
   if (status) status.textContent = '';
+  if (invoiceStatus) invoiceStatus.textContent = '';
+  workerFieldReportSyncRefundableUi_();
   if (typeof assignVoiceClearDraft === 'function') assignVoiceClearDraft(workerFieldReportVoiceId_());
   if (resetMsg !== false && msg) {
     msg.textContent = '';
@@ -167,21 +201,34 @@ function workerFieldReportClearForm_(resetMsg) {
   }
 }
 
-function workerFieldReportProcessPhoto_(file) {
+function workerFieldReportProcessPhoto_(file, kind) {
   if (!file) return;
-  var status = document.getElementById('wfrPhotoStatus');
+  kind = kind === 'invoice' ? 'invoice' : 'job';
+  var status = document.getElementById(kind === 'invoice' ? 'wfrInvoiceStatus' : 'wfrPhotoStatus');
   if (status) status.textContent = '\u23F3 Uploading\u2026';
-  _wfrUploading = true;
+  if (kind === 'invoice') _wfrInvoiceUploading = true;
+  else _wfrUploading = true;
   empireCompressImage(file, workerFieldReportPhotoFolder_(), function (url) {
-    _wfrUploading = false;
+    if (kind === 'invoice') _wfrInvoiceUploading = false;
+    else _wfrUploading = false;
     if (url) {
-      _wfrPhotoUrl = url;
-      var im = document.getElementById('wfrImage');
-      if (im) {
-        im.src = url;
-        im.style.display = 'block';
+      if (kind === 'invoice') {
+        _wfrInvoicePhotoUrl = url;
+        var invoiceIm = document.getElementById('wfrInvoiceImage');
+        if (invoiceIm) {
+          invoiceIm.src = url;
+          invoiceIm.style.display = 'block';
+        }
+        if (status) status.textContent = '\u2705 Invoice photo ready — tap to replace';
+      } else {
+        _wfrPhotoUrl = url;
+        var im = document.getElementById('wfrImage');
+        if (im) {
+          im.src = url;
+          im.style.display = 'block';
+        }
+        if (status) status.textContent = '\u2705 Job photo ready — tap to replace';
       }
-      if (status) status.textContent = '\u2705 Photo ready — tap Camera / gallery to replace';
     } else if (status) {
       status.textContent = '\u274C ' + (_lastEmpireUploadError || 'Upload failed — try again');
     }
@@ -190,8 +237,44 @@ function workerFieldReportProcessPhoto_(file) {
 
 function workerFieldReportHandleFile_(e) {
   var f = e.target.files && e.target.files[0];
-  if (f) workerFieldReportProcessPhoto_(f);
+  if (f) workerFieldReportProcessPhoto_(f, 'job');
   e.target.value = '';
+}
+
+function workerFieldReportPickInvoicePhoto_() {
+  var input = document.getElementById('wfrInvoiceFile');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+function workerFieldReportHandleInvoiceFile_(e) {
+  var f = e.target.files && e.target.files[0];
+  if (f) workerFieldReportProcessPhoto_(f, 'invoice');
+  e.target.value = '';
+}
+
+function workerFieldReportProcessInvoiceModalPhoto_(file) {
+  if (!file) return;
+  var status = document.getElementById('wfrInvoiceModalStatus');
+  if (status) status.textContent = '\u23F3 Uploading\u2026';
+  _wfrInvoiceUploading = true;
+  empireCompressImage(file, workerFieldReportPhotoFolder_(), function (url) {
+    _wfrInvoiceUploading = false;
+    if (url) {
+      _wfrInvoiceModalUrl = url;
+      var im = document.getElementById('wfrInvoiceModalPreview');
+      if (im) {
+        im.src = url;
+        im.style.display = 'block';
+      }
+      if (status) status.textContent = '\u2705 Invoice photo ready';
+      var btn = document.getElementById('wfrInvoiceModalSaveBtn');
+      if (btn) btn.disabled = false;
+    } else if (status) {
+      status.textContent = '\u274C ' + (_lastEmpireUploadError || 'Upload failed — try again');
+    }
+  }, { maxSize: 1400, quality: 0.7 });
 }
 
 function workerFieldReportLoadMine_() {
@@ -221,19 +304,24 @@ function workerFieldReportRenderMine_() {
   host.innerHTML = '<div class="worker-field-my-list">' + _wfrReports.slice(0, 12).map(function (r) {
     var media = r.photo
       ? ('<div class="worker-field-my-media"><img class="worker-field-my-thumb" src="' + workerFieldReportEsc_(r.photo) + '" alt=""></div>')
-      : '<div class="worker-field-my-media worker-field-my-nophoto">No photo</div>';
+      : '<div class="worker-field-my-media worker-field-my-nophoto">No job photo</div>';
     var amountLabel = workerFieldReportAmountLabel_(r.amount);
     var voiceBadge = workerFieldReportVoiceBadgeHtml_(r.voiceNote);
+    var needsInvoice = workerFieldReportNeedsInvoice_(r);
     var meta = [];
     if (amountLabel) meta.push('<span class="worker-field-my-amount">' + workerFieldReportEsc_(amountLabel) + '</span>');
     if (voiceBadge) meta.push(voiceBadge);
-    return '<article class="worker-field-my-card">'
+    if (r.invoicePhoto) meta.push('<span class="worker-field-my-invoice-ok">Invoice added</span>');
+    var cardClass = 'worker-field-my-card' + (needsInvoice ? ' worker-field-my-card-needs-invoice' : '');
+    var clickAttr = needsInvoice ? (' onclick="workerFieldReportOpenInvoiceModal(' + JSON.stringify(String(r.id || '')) + ')" role="button" tabindex="0"') : '';
+    return '<article class="' + cardClass + '"' + clickAttr + '>'
       + media
       + '<div class="worker-field-my-body">'
       + '<div class="worker-field-my-top">'
       + workerFieldReportTypeBadgeHtml_(r)
       + '<time class="worker-field-my-date">' + workerFieldReportEsc_(r.date || '') + '</time>'
       + '</div>'
+      + (needsInvoice ? '<div class="worker-field-my-invoice-missing">Invoice photo missing — tap to add</div>' : '')
       + (r.place ? ('<div class="worker-field-my-place">' + workerFieldReportEsc_(r.place) + '</div>') : '')
       + (r.note ? ('<p class="worker-field-my-note">' + workerFieldReportEsc_(r.note) + '</p>') : '')
       + (r.materials ? ('<p class="worker-field-my-note">' + workerFieldReportEsc_(r.materials) + '</p>') : '')
@@ -242,11 +330,107 @@ function workerFieldReportRenderMine_() {
   }).join('') + '</div>';
 }
 
+function workerFieldReportOpenInvoiceModal_(id) {
+  var r = _wfrReports.find(function (x) { return String(x.id) === String(id); });
+  if (!r || !workerFieldReportNeedsInvoice_(r)) return;
+  _wfrInvoiceModalId = String(id);
+  _wfrInvoiceModalUrl = '';
+  var modal = document.getElementById('wfrInvoiceModal');
+  var body = document.getElementById('wfrInvoiceModalBody');
+  if (!modal || !body) return;
+  var amountLabel = workerFieldReportAmountLabel_(r.amount);
+  var h = '<div class="worker-field-invoice-readonly">';
+  h += '<p class="worker-field-invoice-lead">You can only add the invoice photo here. Other details cannot be edited.</p>';
+  if (r.place) h += '<div class="worker-field-invoice-row"><span class="worker-field-invoice-label">Place</span><span>' + workerFieldReportEsc_(r.place) + '</span></div>';
+  if (r.note) h += '<div class="worker-field-invoice-row"><span class="worker-field-invoice-label">Note</span><span>' + workerFieldReportEsc_(r.note) + '</span></div>';
+  if (amountLabel) h += '<div class="worker-field-invoice-row"><span class="worker-field-invoice-label">Amount</span><span>' + workerFieldReportEsc_(amountLabel) + '</span></div>';
+  if (r.photo) {
+    h += '<div class="worker-field-invoice-row"><span class="worker-field-invoice-label">Job photo</span></div>';
+    h += '<img class="worker-field-invoice-job-thumb" src="' + workerFieldReportEsc_(r.photo) + '" alt="Job photo">';
+  }
+  h += '<label class="worker-field-label" style="margin-top:14px;">Invoice photo</label>';
+  h += '<button type="button" class="worker-field-photo-btn" onclick="workerFieldReportPickInvoiceModalPhoto()">Camera / gallery — invoice</button>';
+  h += '<input type="file" id="wfrInvoiceModalFile" accept="image/*" style="display:none" onchange="workerFieldReportHandleInvoiceModalFile(event)">';
+  h += '<p id="wfrInvoiceModalStatus" class="worker-field-photo-status" aria-live="polite"></p>';
+  h += '<img id="wfrInvoiceModalPreview" class="worker-field-preview-img" style="display:none" alt="Invoice preview">';
+  h += '<button type="button" id="wfrInvoiceModalSaveBtn" class="worker-field-submit" disabled onclick="workerFieldReportSaveInvoicePhoto()">Save invoice photo</button>';
+  h += '<p id="wfrInvoiceModalMsg" class="worker-field-msg" aria-live="polite"></p>';
+  h += '</div>';
+  body.innerHTML = h;
+  modal.classList.add('show');
+}
+
+function workerFieldReportCloseInvoiceModal_() {
+  _wfrInvoiceModalId = '';
+  _wfrInvoiceModalUrl = '';
+  var modal = document.getElementById('wfrInvoiceModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function workerFieldReportPickInvoiceModalPhoto_() {
+  var input = document.getElementById('wfrInvoiceModalFile');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+function workerFieldReportHandleInvoiceModalFile_(e) {
+  var f = e.target.files && e.target.files[0];
+  if (f) workerFieldReportProcessInvoiceModalPhoto_(f);
+  e.target.value = '';
+}
+
+function workerFieldReportSaveInvoicePhoto_() {
+  if (_wfrInvoiceSaving || _wfrInvoiceUploading) return;
+  var cfg = workerFieldReportCfg_();
+  if (!cfg || !cfg.actions || !cfg.actions.updateInvoice || !_wfrInvoiceModalId) return;
+  if (!_wfrInvoiceModalUrl) {
+    alert('Choose an invoice photo first.');
+    return;
+  }
+  _wfrInvoiceSaving = true;
+  var btn = document.getElementById('wfrInvoiceModalSaveBtn');
+  var msg = document.getElementById('wfrInvoiceModalMsg');
+  if (btn) btn.disabled = true;
+  if (msg) {
+    msg.textContent = '\u23F3 Saving\u2026';
+    msg.className = 'worker-field-msg';
+  }
+  fetchJSONRetry({
+    action: cfg.actions.updateInvoice,
+    token: issueToken() || '',
+    id: _wfrInvoiceModalId,
+    invoicePhoto: _wfrInvoiceModalUrl
+  }, 2, 45000).then(function (d) {
+    if (d && (d.ok || d.success)) {
+      if (msg) {
+        msg.textContent = '\u2705 Invoice photo saved.';
+        msg.className = 'worker-field-msg worker-field-msg-ok';
+      }
+      workerFieldReportCloseInvoiceModal_();
+      workerFieldReportLoadMine_();
+    } else if (d && d.ok === false) {
+      if (typeof forceSessionLogout === 'function' && forceSessionLogout(d)) return;
+      throw new Error(d.message || d.error || 'Could not save invoice photo');
+    } else {
+      throw new Error('Unexpected server response');
+    }
+  }).catch(function (e) {
+    if (msg) {
+      msg.textContent = '\u274C ' + String((e && e.message) || e || 'Failed');
+      msg.className = 'worker-field-msg worker-field-msg-error';
+    }
+    if (btn) btn.disabled = false;
+  }).finally(function () {
+    _wfrInvoiceSaving = false;
+  });
+}
+
 function workerFieldReportSubmit_() {
   if (_wfrSubmitting) return;
   var cfg = workerFieldReportCfg_();
   if (!cfg || !cfg.actions || !cfg.actions.add) return;
-  if (_wfrUploading) {
+  if (_wfrUploading || _wfrInvoiceUploading) {
     alert('Please wait for the photo to finish uploading.');
     return;
   }
@@ -260,6 +444,13 @@ function workerFieldReportSubmit_() {
   var amount = amountEl ? workerFieldReportParseAmount_(amountEl.value) : 0;
   var msg = document.getElementById('wfrFormMsg');
   var btn = document.getElementById('wfrSubmitBtn');
+  if (amount > 0 && !_wfrPhotoUrl) {
+    if (msg) {
+      msg.textContent = 'Refundable reports need a job photo before sending.';
+      msg.className = 'worker-field-msg worker-field-msg-error';
+    }
+    return;
+  }
   if (!place && !note && !_wfrPhotoUrl) {
     var draft = typeof assignVoiceDraft_ === 'function' ? assignVoiceDraft_(workerFieldReportVoiceId_()) : null;
     if (!draft || !draft.blob) {
@@ -295,6 +486,7 @@ function workerFieldReportSubmit_() {
       materials: materials,
       amount: amount || '',
       photo: _wfrPhotoUrl || '',
+      invoicePhoto: _wfrInvoicePhotoUrl || '',
       workerName: typeof civilWorkerName === 'function' ? civilWorkerName(empireGetUser()) : (empireGetUser() || '')
     };
     if (voiceNote) body.voiceNote = voiceNote;
@@ -328,4 +520,11 @@ window.workerFieldReportSwitchTab = workerFieldReportSwitchTab_;
 window.workerFieldReportSubmit = workerFieldReportSubmit_;
 window.workerFieldReportHandleFile = workerFieldReportHandleFile_;
 window.workerFieldReportPickPhoto = workerFieldReportPickPhoto_;
+window.workerFieldReportPickInvoicePhoto = workerFieldReportPickInvoicePhoto_;
+window.workerFieldReportHandleInvoiceFile = workerFieldReportHandleInvoiceFile_;
 window.workerFieldReportHandleAmountInput = workerFieldReportHandleAmountInput_;
+window.workerFieldReportOpenInvoiceModal = workerFieldReportOpenInvoiceModal_;
+window.workerFieldReportCloseInvoiceModal = workerFieldReportCloseInvoiceModal_;
+window.workerFieldReportPickInvoiceModalPhoto = workerFieldReportPickInvoiceModalPhoto_;
+window.workerFieldReportHandleInvoiceModalFile = workerFieldReportHandleInvoiceModalFile_;
+window.workerFieldReportSaveInvoicePhoto = workerFieldReportSaveInvoicePhoto_;

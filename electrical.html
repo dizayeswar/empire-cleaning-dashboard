@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://api.imgbb.com">
 <title>Electrical Department — Empire World</title>
 <link rel="stylesheet" href="assets/empire.css?v=2026-07-19-elec-merge">
-<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-19-fr-materials">
-<link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-19-field-cards">
+<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-19-invoice-photo">
+<link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-19-invoice-photo">
 </head>
 <body>
 <div class="login-page show" id="loginPage">
@@ -462,6 +462,9 @@ function fieldReportType_(r) {
   var amt = parseFloat(r && r.amount);
   return (!isNaN(amt) && amt > 0) ? 'refundable' : 'maintenance';
 }
+function fieldReportNeedsInvoice_(r) {
+  return fieldReportType_(r) === 'refundable' && fieldReportIsPending_(r) && !String(r.invoicePhoto || '').trim();
+}
 function fieldReportTypeBadge_(r) {
   return fieldReportType_(r) === 'refundable'
     ? '<span class="badge refundable">Refundable</span>'
@@ -567,6 +570,7 @@ function renderFieldReports(){
     h+='<div class="field-report-top" style="margin-top:-2px;margin-bottom:4px;">'+fieldReportStatusBadge_(r)+'<span class="field-report-date">'+_esc(r.date||'')+'</span></div>';
     h+='<div class="field-report-title">'+_esc(who)+'</div>';
     if(fieldReportAmountLabel_(r)) h+='<div class="field-report-amount">'+fieldReportAmountLabel_(r)+'</div>';
+    if(fieldReportNeedsInvoice_(r)) h+='<div class="field-report-invoice-missing">Invoice photo missing</div>';
     if(r.place) h+='<div class="field-report-loc">'+_esc(r.place)+'</div>';
     h+='<div class="field-report-note">'+_esc(fieldReportIsPending_(r)?(r.note||''):(r.editedNote||r.note||''))+'</div>';
     if(!fieldReportIsPending_(r) && r.reportMonth) h+='<div class="field-report-date">Month: '+_esc(fieldReportMonthLabel_(r))+'</div>';
@@ -594,6 +598,7 @@ function openFieldReportEditor(id){
   var queue=fieldReportPendingQueue_();
   var pos=queue.findIndex(function(x){ return String(x.id)===String(id); });
   var hasPhoto=!!r.photo;
+  var hasInvoice=!!r.invoicePhoto;
   var hasVoice=!!(r.voiceNote&&r.voiceNote.url);
   var h='<div class="field-report-modal field-report-editor">';
   h+='<span class="close-x" onclick="closeFieldReportModal()" aria-label="Close">&times;</span>';
@@ -613,14 +618,26 @@ function openFieldReportEditor(id){
   h+='<input type="text" id="frEditMaterials" class="field-report-editor-materials" value="'+_esc(r.materials||'')+'" placeholder="e.g. 2 Switch plug, 1m Wire 2x2.5">';
   h+='<p class="field-report-editor-hint">Saved to the Materials column in Jobs and the monthly report.</p>';
   h+='</div>';
-  if(hasPhoto || hasVoice){
+  if(hasPhoto || hasInvoice || hasVoice || fieldReportType_(r)==='refundable'){
     h+='<div class="field-report-editor-side">';
     if(hasPhoto){
       h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
-      h+='<span class="field-report-modal-label">Photo</span>';
+      h+='<span class="field-report-modal-label">Job photo</span>';
       h+='<div class="field-report-modal-photo-frame">';
       h+='<img class="field-report-modal-photo" src="'+r.photo+'" onclick="bigImg(this.src)" alt="Report photo">';
       h+='</div></div>';
+    }
+    if(fieldReportType_(r)==='refundable'){
+      h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
+      h+='<span class="field-report-modal-label">Invoice photo</span>';
+      if(hasInvoice){
+        h+='<div class="field-report-modal-photo-frame">';
+        h+='<img class="field-report-modal-photo" src="'+r.invoicePhoto+'" onclick="bigImg(this.src)" alt="Invoice photo">';
+        h+='</div>';
+      } else {
+        h+='<p class="field-report-invoice-missing-note">Worker has not added the invoice photo yet.</p>';
+      }
+      h+='</div>';
     }
     if(hasVoice){
       h+='<div class="field-report-modal-section field-report-modal-voice field-report-voice-review">';
@@ -651,8 +668,9 @@ function openFieldReportView(id){
   var body=document.getElementById('fieldReportModalBody');
   if(!body) return;
   var hasPhoto=!!r.photo;
+  var hasInvoice=!!r.invoicePhoto;
   var hasVoice=!!(r.voiceNote&&r.voiceNote.url);
-  var hasMedia=hasPhoto||hasVoice;
+  var hasMedia=hasPhoto||hasInvoice||hasVoice||fieldReportType_(r)==='refundable';
   var noteText=fieldReportIsPending_(r)?(r.note||''):(r.editedNote||r.note||'');
   var h='<div class="field-report-modal">';
   h+='<span class="close-x" onclick="closeFieldReportModal()" aria-label="Close">&times;</span>';
@@ -673,10 +691,22 @@ function openFieldReportView(id){
     h+='<div class="field-report-modal-side">';
     if(hasPhoto){
       h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
-      h+='<span class="field-report-modal-label">Photo</span>';
+      h+='<span class="field-report-modal-label">Job photo</span>';
       h+='<div class="field-report-modal-photo-frame">';
       h+='<img class="field-report-modal-photo" src="'+r.photo+'" onclick="bigImg(this.src)" alt="Report photo">';
       h+='</div><p class="field-report-modal-photo-hint">Tap photo to enlarge</p></div>';
+    }
+    if(fieldReportType_(r)==='refundable'){
+      h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
+      h+='<span class="field-report-modal-label">Invoice photo</span>';
+      if(hasInvoice){
+        h+='<div class="field-report-modal-photo-frame">';
+        h+='<img class="field-report-modal-photo" src="'+r.invoicePhoto+'" onclick="bigImg(this.src)" alt="Invoice photo">';
+        h+='</div><p class="field-report-modal-photo-hint">Tap photo to enlarge</p>';
+      } else {
+        h+='<p class="field-report-invoice-missing-note">Invoice photo not added yet.</p>';
+      }
+      h+='</div>';
     }
     if(hasVoice) h+=fieldReportModalVoiceHtml_(r.voiceNote);
     h+='</div>';

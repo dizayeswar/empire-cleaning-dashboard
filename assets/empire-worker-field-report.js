@@ -155,7 +155,7 @@ function workerFieldReportSwitchTab_(tab) {
   if (countBar) countBar.style.display = tab === 'jobs' ? '' : 'none';
   if (btnJobs) btnJobs.classList.toggle('active', tab === 'jobs');
   if (btnReport) btnReport.classList.toggle('active', tab === 'report');
-  if (tab === 'report') workerFieldReportLoadMine_();
+  if (tab === 'report') workerFieldReportLoadMine_(true);
 }
 
 function workerFieldReportPickPhoto_() {
@@ -277,17 +277,25 @@ function workerFieldReportProcessInvoiceModalPhoto_(file) {
   }, { maxSize: 1400, quality: 0.7 });
 }
 
-function workerFieldReportLoadMine_() {
+function workerFieldReportLoadMine_(force) {
   var cfg = workerFieldReportCfg_();
   if (!cfg || !cfg.actions || !cfg.actions.get || typeof fetchJSONRetry !== 'function') return;
   var host = document.getElementById('workerFieldMyReports');
   if (!host) return;
-  fetchJSONRetry({ action: cfg.actions.get, token: issueToken() || '' }, 1, 45000)
+  fetchJSONRetry({ action: cfg.actions.get, token: issueToken() || '' }, force ? 2 : 1, 45000)
     .then(function (d) {
       _wfrReports = Array.isArray(d) ? d : [];
       workerFieldReportRenderMine_();
     })
     .catch(function () {
+      if (force) {
+        _wfrReports = [];
+        workerFieldReportRenderMine_();
+        if (host) {
+          host.innerHTML = '<p class="worker-empty" style="font-size:13px;">Could not load your reports.</p>';
+        }
+        return;
+      }
       if (host && !_wfrReports.length) {
         host.innerHTML = '<p class="worker-empty" style="font-size:13px;">Could not load your reports.</p>';
       }
@@ -528,3 +536,4 @@ window.workerFieldReportCloseInvoiceModal = workerFieldReportCloseInvoiceModal_;
 window.workerFieldReportPickInvoiceModalPhoto = workerFieldReportPickInvoiceModalPhoto_;
 window.workerFieldReportHandleInvoiceModalFile = workerFieldReportHandleInvoiceModalFile_;
 window.workerFieldReportSaveInvoicePhoto = workerFieldReportSaveInvoicePhoto_;
+window.workerFieldReportRefresh = function (force) { workerFieldReportLoadMine_(!!force); };

@@ -850,6 +850,7 @@ function bindWorkerAppLifecycle_() {
         if (now - _workerLastResumeFetch < WORKER_RESUME_FETCH_MIN_MS) return;
         _workerLastResumeFetch = now;
         loadIssues(true);
+        if (typeof workerFieldReportRefresh === 'function') workerFieldReportRefresh(true);
       }, 600);
     } else {
       sendWorkerLocationNow(true, true);

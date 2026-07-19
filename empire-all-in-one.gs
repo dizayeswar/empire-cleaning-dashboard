@@ -2764,6 +2764,12 @@ function handleClearElectricalJobs(body) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(ELECTRICAL_JOBS_SHEET);
   if (sheet && sheet.getLastRow()>1) { var _r=sheet.getDataRange().getValues(); trashRows_(ELECTRICAL_JOBS_SHEET,_r.slice(1),'reset',body.username); sheet.deleteRows(2,sheet.getLastRow()-1); }
+  var frSheet = ss.getSheetByName(ELECTRIC_WORKER_REPORTS_SHEET);
+  if (frSheet && frSheet.getLastRow()>1) {
+    var _fr = frSheet.getDataRange().getValues();
+    trashRows_(ELECTRIC_WORKER_REPORTS_SHEET, _fr.slice(1), 'reset', body.username);
+    frSheet.deleteRows(2, frSheet.getLastRow() - 1);
+  }
   return {ok:true,success:true};
 }
 

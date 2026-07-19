@@ -21,7 +21,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-19-field-report-transfer-v1';
+var SCRIPT_VERSION = '2026-07-19-field-transfer-fast-v1';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -2837,6 +2837,21 @@ function handleGetElectricWorkerReports(body, auth) {
   return out;
 }
 
+function findElectricWorkerReportRow_(sheet, id) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  var idCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = 0; i < idCol.length; i++) {
+    if (String(idCol[i][0]) === id) {
+      return {
+        rowIdx: i + 2,
+        row: sheet.getRange(i + 2, 1, 1, 16).getValues()[0]
+      };
+    }
+  }
+  return null;
+}
+
 function handleTransferElectricWorkerReport(body, auth) {
   var id = String(body.id || '').trim();
   if (!id) return {ok:false,success:false,error:'missing_id',message:'Report id is required.'};
@@ -2848,13 +2863,10 @@ function handleTransferElectricWorkerReport(body, auth) {
   if (!sheet || sheet.getLastRow() < 2) return {ok:false,success:false,error:'not_found',message:'Report not found.'};
   ensureElectricWorkerReportsSheet_(sheet);
 
-  var rows = sheet.getDataRange().getValues();
-  var rowIdx = -1;
-  var row = null;
-  for (var i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]) === id) { rowIdx = i + 1; row = rows[i]; break; }
-  }
-  if (!row) return {ok:false,success:false,error:'not_found',message:'Report not found.'};
+  var found = findElectricWorkerReportRow_(sheet, id);
+  if (!found) return {ok:false,success:false,error:'not_found',message:'Report not found.'};
+  var rowIdx = found.rowIdx;
+  var row = found.row;
 
   var status = String(row[11] || 'pending').trim().toLowerCase();
   if (status === 'transferred') {
@@ -2877,6 +2889,8 @@ function handleTransferElectricWorkerReport(body, auth) {
   var now = new Date();
   var jobId = 'job-' + now.getTime();
   var reportMonth = electricReportMonthOfDate_(dateStr);
+  var createdAt = now.toISOString();
+  var createdBy = body.username || '';
 
   var jobsSheet = ss.getSheetByName(ELECTRICAL_JOBS_SHEET) || ss.insertSheet(ELECTRICAL_JOBS_SHEET);
   if (jobsSheet.getLastRow() === 0) jobsSheet.appendRow(['id','date','job','location','materials','staff','type','photo','notes','createdBy','createdAt','amount']);
@@ -2890,8 +2904,8 @@ function handleTransferElectricWorkerReport(body, auth) {
     jobType,
     photo,
     'From field report ' + id,
-    body.username || '',
-    now.toISOString(),
+    createdBy,
+    createdAt,
     amountNum > 0 ? amountNum : ''
   ]);
 
@@ -2899,11 +2913,31 @@ function handleTransferElectricWorkerReport(body, auth) {
     'transferred',
     jobId,
     editedNote,
-    now.toISOString(),
-    body.username || ''
+    createdAt,
+    createdBy
   ]]);
 
-  return {ok:true,success:true,id:id,jobId:jobId,reportMonth:reportMonth};
+  return {
+    ok: true,
+    success: true,
+    id: id,
+    jobId: jobId,
+    reportMonth: reportMonth,
+    job: {
+      id: jobId,
+      date: dateStr,
+      job: editedNote,
+      location: place,
+      materials: '0',
+      staff: workerName,
+      type: jobType,
+      photo: photo,
+      notes: 'From field report ' + id,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      amount: amountNum > 0 ? amountNum : ''
+    }
+  };
 }
 
 /* ===== Civil Department jobs (mirrors Electrical, separate storage) ===== */

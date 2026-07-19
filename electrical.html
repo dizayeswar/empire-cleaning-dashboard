@@ -66,9 +66,13 @@
       <h2><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> All Jobs & Shifts</h2>
       <div class="form-row">
         <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="f-month" onchange="renderJobs()">
-          <span onclick="document.getElementById('f-month').value='';renderJobs();" style="font-size:11px;color:var(--text-faint);cursor:pointer;margin-top:4px;">clear</span>
+          <label>Month</label>
+          <div class="month-input-wrap">
+            <input type="month" id="f-month" onchange="renderJobs()">
+            <span class="month-ph">All months</span>
+          </div>
+          <span onclick="var el=document.getElementById('f-month'); if(el){el.value=''; if(typeof syncMonthInput==='function')syncMonthInput(el);} renderJobs();" style="font-size:11px;color:var(--text-faint);cursor:pointer;margin-top:4px;">all months</span>
+          <span style="display:block;font-size:11px;color:var(--text-faint);margin-top:2px;">Billing month: 26th – 25th</span>
         </div>
         <div class="form-group">
           <label>Type</label>
@@ -566,6 +570,30 @@ function openFieldReportView(id){
   if(typeof assignVoiceBindPlayers==='function') assignVoiceBindPlayers(body);
   document.getElementById('fieldReportModal').classList.add('show');
 }
+function fieldReportApplyTransfer_(id, note, resp) {
+  var now = new Date().toISOString();
+  var user = currentUser() || '';
+  var idx = allFieldReports.findIndex(function(r) { return String(r.id) === String(id); });
+  if (idx >= 0) {
+    allFieldReports[idx] = Object.assign({}, allFieldReports[idx], {
+      status: 'transferred',
+      editedNote: note,
+      transferredJobId: (resp && resp.jobId) || '',
+      transferredAt: now,
+      transferredBy: user
+    });
+  }
+  if (resp && resp.job) {
+    allJobs.push(resp.job);
+    writeJobsCache(allJobs);
+  } else {
+    loadJobs();
+  }
+  renderFieldReports();
+  renderJobs();
+  renderAnalytics();
+  renderReportPreview();
+}
 function transferFieldReport_(openNext){
   if(_fieldReportTransferring) return;
   var id=_fieldReportEditingId;
@@ -576,31 +604,30 @@ function transferFieldReport_(openNext){
   _fieldReportTransferring=true;
   var btn=document.getElementById('frTransferBtn');
   var btnNext=document.getElementById('frTransferNextBtn');
-  if(btn) btn.disabled=true;
-  if(btnNext) btnNext.disabled=true;
-  fetchJSONRetry({action:'transferElectricWorkerReport',id:id,note:note,token:tok()},2,45000)
+  var btnLabels=btn?[btn.textContent,'']:['',''];
+  var nextLabels=btnNext?[btnNext.textContent,'']:['',''];
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  if(btnNext){ btnNext.disabled=true; btnNext.textContent='Saving…'; }
+  fetchJSONRetry({action:'transferElectricWorkerReport',id:id,note:note,token:tok()},1,30000)
     .then(function(d){
       if(d&&d.ok===false){
         if(typeof forceSessionLogout==='function'&&forceSessionLogout(d)) return;
         throw new Error(d.message||d.error||'Could not save report');
       }
       if(!d||(!d.ok&&!d.success)) throw new Error('Unexpected server response');
-      return fetchJSONRetry({action:'getElectricWorkerReports',token:tok()},2,45000).then(function(list){
-        if(Array.isArray(list)){ allFieldReports=list; renderFieldReports(); }
-        loadJobs();
-        closeFieldReportModal();
-        if(openNext){
-          var queue=fieldReportPendingQueue_();
-          if(queue.length){ openFieldReportEditor(queue[0].id); return; }
-        }
-        alert('Saved to monthly report'+(d.reportMonth?(' · '+fieldReportMonthLabel_({reportMonth:d.reportMonth})):'.'));
-      });
+      fieldReportApplyTransfer_(id, note, d);
+      closeFieldReportModal();
+      if(openNext){
+        var queue=fieldReportPendingQueue_();
+        if(queue.length){ openFieldReportEditor(queue[0].id); return; }
+      }
+      alert('Saved to monthly report'+(d.reportMonth?(' · '+fieldReportMonthLabel_({reportMonth:d.reportMonth})):'.'));
     })
     .catch(function(e){ alert('❌ '+String((e&&e.message)||e||'Failed')); })
     .finally(function(){
       _fieldReportTransferring=false;
-      if(btn) btn.disabled=false;
-      if(btnNext) btnNext.disabled=false;
+      if(btn){ btn.disabled=false; btn.textContent=btnLabels[0]||'Save to monthly report'; }
+      if(btnNext){ btnNext.disabled=false; btnNext.textContent=nextLabels[0]||'Save & next'; }
     });
 }
 function closeFieldReportModal(){
@@ -622,7 +649,7 @@ function renderJobs(){
   var ft=document.getElementById('f-type').value||'';
   var fq=(document.getElementById('f-search').value||'').toLowerCase();
   var rows=allJobs.filter(r=>{
-    if(fm&&dayOf(r)!==fm)return false;
+    if(fm&&monthOf(r)!==fm)return false;
     if(ft&&r.type!==ft)return false;
     if(fq){ var hay=(r.job+' '+r.location+' '+r.staff+' '+r.materials).toLowerCase(); if(hay.indexOf(fq)===-1)return false; }
     return true;

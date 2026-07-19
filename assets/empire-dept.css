@@ -59,6 +59,67 @@ button {
   flex: 2 1 220px;
 }
 
+.filter-toolbar .form-group.filter-month-group {
+  flex: 2 1 320px;
+}
+
+.filter-month-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.filter-month-row .month-input-wrap {
+  flex: 0 0 auto;
+  width: 150px;
+  max-width: 100%;
+}
+
+.filter-month-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.filter-month-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.filter-month-link:hover {
+  color: var(--accent2);
+}
+
+.filter-billing-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.jobs-filter-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+.jobs-filter-sep {
+  color: var(--text-faint);
+}
+
 .filter-toolbar .form-group.filter-actions,
 .filter-toolbar .form-group.filter-toggle {
   flex: 0 0 auto;

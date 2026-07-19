@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://api.imgbb.com">
 <title>Electrical Department — Empire World</title>
 <link rel="stylesheet" href="assets/empire.css?v=2026-07-19-elec-merge">
-<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-19-invoice-photo">
+<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-19-jobs-filter-inline">
 <link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-19-invoice-photo">
 </head>
 <body>
@@ -74,14 +74,19 @@
     <div class="form-section">
       <h2><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg></span> All Jobs & Shifts</h2>
       <div class="form-row filter-toolbar">
-        <div class="form-group">
+        <div class="form-group filter-month-group">
           <label>Month</label>
-          <div class="month-input-wrap">
-            <input type="month" id="jf-month" onchange="renderJobs()">
-            <span class="month-ph">All months</span>
+          <div class="filter-month-row">
+            <div class="month-input-wrap">
+              <input type="month" id="jf-month" onchange="renderJobs()">
+              <span class="month-ph">All months</span>
+            </div>
+            <div class="filter-month-meta">
+              <button type="button" class="filter-month-link" onclick="var el=document.getElementById('jf-month'); if(el){el.value=''; if(typeof syncMonthInput==='function')syncMonthInput(el);} renderJobs();">all months</button>
+              <span class="filter-billing-hint">Billing month: 26th – 25th</span>
+              <span id="jobsFilterSummary" class="jobs-filter-summary"></span>
+            </div>
           </div>
-          <span onclick="var el=document.getElementById('jf-month'); if(el){el.value=''; if(typeof syncMonthInput==='function')syncMonthInput(el);} renderJobs();" style="font-size:11px;color:var(--text-faint);cursor:pointer;margin-top:4px;">all months</span>
-          <span style="display:block;font-size:11px;color:var(--text-faint);margin-top:2px;">Billing month: 26th – 25th</span>
         </div>
         <div class="form-group">
           <label>Type</label>
@@ -955,7 +960,11 @@ function renderJobs(){
   rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   var total=rows.length, gen=rows.filter(r=>r.type==='general').length, ref=rows.filter(r=>r.type==='refundable').length, cc=rows.filter(r=>r.type==='callcenter').length;
   var refTotal=rows.filter(r=>r.type==='refundable').reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
-  var h='<p style="color:var(--text-soft);margin-bottom:12px;">'+total+' record(s)'+(fm?' in '+fm:'')+' &nbsp;—&nbsp; <span style="color:var(--c-general);">🔧 '+gen+' general</span> &nbsp;·&nbsp; <span style="color:var(--c-refundable);">📦 '+ref+' refundable</span> &nbsp;·&nbsp; <span style="color:var(--c-callcenter);">📞 '+cc+' call center</span>'+(refTotal>0?' &nbsp;·&nbsp; <span style="color:var(--c-money);">💰 '+fmtMoney(refTotal)+' IQD refundable total</span>':'')+'</p>';
+  var summaryEl=document.getElementById('jobsFilterSummary');
+  if(summaryEl){
+    summaryEl.innerHTML=total+' record(s)'+(fm?' in '+fm:'')+' <span class="jobs-filter-sep">—</span> <span style="color:var(--c-general);">🔧 '+gen+' general</span> <span class="jobs-filter-sep">·</span> <span style="color:var(--c-refundable);">📦 '+ref+' refundable</span> <span class="jobs-filter-sep">·</span> <span style="color:var(--c-callcenter);">📞 '+cc+' call center</span>'+(refTotal>0?' <span class="jobs-filter-sep">·</span> <span style="color:var(--c-money);">💰 '+fmtMoney(refTotal)+' IQD refundable total</span>':'');
+  }
+  var h='';
   var showActions=(P.edit!==false || P.del!==false);
   h+='<div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Job</th><th>Location</th><th>Materials</th><th>Staff</th><th>Amount</th><th>Photo</th>'+(showActions?'<th>Actions</th>':'')+'</tr></thead><tbody>';
   if(rows.length===0) h+='<tr><td colspan="10" style="color:var(--text-faint);">No records match.</td></tr>';

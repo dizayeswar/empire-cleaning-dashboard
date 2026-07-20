@@ -62,11 +62,15 @@
   function appendToInput(input, text) {
     if (!input || !text) return;
     var cur = String(input.value || '').trim();
-    input.value = cur ? (cur + ', ' + text) : text;
+    var sep = input.tagName === 'TEXTAREA' ? '\n' : ', ';
+    input.value = cur ? (cur + sep + text) : text;
     try {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     } catch (e) {}
     input.focus();
+    if (input.tagName === 'TEXTAREA' && typeof input.scrollTop !== 'undefined') {
+      input.scrollTop = input.scrollHeight;
+    }
   }
 
   function buildPickerHtml() {

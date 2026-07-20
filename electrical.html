@@ -15,9 +15,9 @@
 <title>Electrical Department — Empire World</title>
 <style id="empire-auth-boot">body.auth-login-visible #mainContainer,body.auth-login-visible .modal{display:none!important}</style>
 <link rel="stylesheet" href="assets/empire.css?v=2026-07-19-android-stable-v3">
-<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-19-jobs-filter-inline">
+<link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-20-materials-textarea">
 <link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-19-android-stable-v3">
-<link rel="stylesheet" href="assets/empire-electrical-materials.css?v=2026-07-20-portal-materials">
+<link rel="stylesheet" href="assets/empire-electrical-materials.css?v=2026-07-20-materials-textarea">
 </head>
 <body class="auth-login-visible">
 <div class="login-page show" id="loginPage">
@@ -334,7 +334,7 @@
 <script src="assets/empire-auth.js?v=2026-07-19-android-stable-v3"></script>
 <script src="assets/empire-core.js"></script>
 <script src="assets/empire-assign-voice.js"></script>
-<script src="assets/empire-electrical-materials.js?v=2026-07-20-portal-materials"></script>
+<script src="assets/empire-electrical-materials.js?v=2026-07-20-materials-textarea"></script>
 <div class="modal" id="imgModal" onclick="closeImg()"><img id="imgBig" style="max-width:92%;max-height:92%;border-radius:10px;"></div>
 <div class="modal" id="fieldReportModal" onclick="if(event.target===this)closeFieldReportModal()">
   <div class="modal-box field-report-modal-box" id="fieldReportModalBody" onclick="event.stopPropagation()"></div>
@@ -626,7 +626,7 @@ function openFieldReportEditor(id){
   h+='<textarea id="frEditNote" class="field-report-editor-note" rows="4">'+_esc(r.note||'')+'</textarea>';
   h+='<p class="field-report-editor-hint">This text becomes the job line in the monthly report. Voice notes are not copied.</p>';
   h+='<label class="field-report-modal-label" for="frEditMaterials" style="margin-top:14px;display:block;">Materials / quantity</label>';
-  h+='<input type="text" id="frEditMaterials" class="field-report-editor-materials" value="'+_esc(r.materials||'')+'" placeholder="e.g. 2 Switch plug, 1m Wire 2x2.5">';
+  h+='<textarea id="frEditMaterials" class="field-report-editor-materials" rows="5" placeholder="e.g. Main Sensor 63a&#10;Cable Single 2x2.5">'+_esc(r.materials||'')+'</textarea>';
   h+='<p class="field-report-editor-hint">Saved to the Materials column in Jobs and the monthly report.</p>';
   h+='</div>';
   if(hasPhoto || hasInvoice || hasVoice || fieldReportType_(r)==='refundable'){

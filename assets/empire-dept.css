@@ -692,12 +692,15 @@ tr.job-row:hover {
   width: 100%;
   box-sizing: border-box;
   margin-top: 6px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border: 2px solid var(--input-border, var(--card-border));
   border-radius: 10px;
   font-size: 15px;
+  line-height: 1.45;
   background: var(--input-bg, #fff);
   color: var(--text);
+  resize: vertical;
+  min-height: 110px;
   font-family: inherit;
 }
 

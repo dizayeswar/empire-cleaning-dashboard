@@ -59,6 +59,57 @@
     return v ? (name + ' ' + v) : name;
   }
 
+  function formatSelectionWithQty(name, variant, qty) {
+    var label = formatSelection(name, variant);
+    var q = parseFloat(qty);
+    if (isNaN(q) || q <= 0) q = 1;
+    if (Math.abs(q - Math.round(q)) < 0.0001) q = Math.round(q);
+    else q = Math.round(q * 100) / 100;
+    return q + ' \u00d7 ' + label;
+  }
+
+  function parseMaterialLine(line) {
+    line = String(line || '').trim();
+    if (!line) return null;
+    var m = line.match(/^(\d+(?:\.\d+)?)\s*(?:[x×]\s*)?(.+)$/i);
+    if (m) {
+      var qty = parseFloat(m[1]);
+      var name = String(m[2] || '').trim();
+      if (!name || isNaN(qty) || qty <= 0) return null;
+      return { qty: qty, name: name };
+    }
+    return { qty: 1, name: line };
+  }
+
+  function parseMaterialsText(text) {
+    var out = [];
+    String(text || '').split(/\r?\n|,/).forEach(function (part) {
+      var item = parseMaterialLine(part);
+      if (item) out.push(item);
+    });
+    return out;
+  }
+
+  function aggregateMaterialsUsage(texts) {
+    var totals = {};
+    (texts || []).forEach(function (text) {
+      parseMaterialsText(text).forEach(function (item) {
+        var key = item.name;
+        if (!totals[key]) totals[key] = 0;
+        totals[key] += item.qty;
+      });
+    });
+    return Object.keys(totals).sort(function (a, b) {
+      return totals[b] - totals[a] || a.localeCompare(b);
+    }).map(function (name) {
+      var qty = totals[name];
+      return {
+        name: name,
+        qty: Math.abs(qty - Math.round(qty)) < 0.0001 ? Math.round(qty) : Math.round(qty * 100) / 100
+      };
+    });
+  }
+
   function appendToInput(input, text) {
     if (!input || !text) return;
     var cur = String(input.value || '').trim();
@@ -71,6 +122,50 @@
     if (input.tagName === 'TEXTAREA' && typeof input.scrollTop !== 'undefined') {
       input.scrollTop = input.scrollHeight;
     }
+  }
+
+  function promptMaterialQuantity(label, onConfirm) {
+    var existing = document.getElementById('empireMatQtySheet');
+    if (existing) existing.remove();
+    var wrap = document.createElement('div');
+    wrap.id = 'empireMatQtySheet';
+    wrap.className = 'empire-mat-qty-sheet';
+    wrap.innerHTML =
+      '<div class="empire-mat-qty-backdrop" data-close="1"></div>'
+      + '<div class="empire-mat-qty-panel" role="dialog" aria-label="Material quantity">'
+      + '<p class="empire-mat-qty-title">How many?</p>'
+      + '<p class="empire-mat-qty-label">' + escHtml(label) + '</p>'
+      + '<input type="number" id="empireMatQtyInput" class="empire-mat-qty-input" value="1" min="0.01" step="1" inputmode="decimal">'
+      + '<div class="empire-mat-qty-actions">'
+      + '<button type="button" class="empire-mat-qty-add" data-add="1">Add to list</button>'
+      + '<button type="button" class="empire-mat-qty-cancel" data-close="1">Cancel</button>'
+      + '</div></div>';
+    document.body.appendChild(wrap);
+    var input = wrap.querySelector('#empireMatQtyInput');
+    function close() { wrap.remove(); }
+    function submit() {
+      var qty = input ? parseFloat(input.value) : 1;
+      if (isNaN(qty) || qty <= 0) qty = 1;
+      close();
+      if (typeof onConfirm === 'function') onConfirm(qty);
+    }
+    wrap.querySelectorAll('[data-close]').forEach(function (el) {
+      el.addEventListener('click', close);
+    });
+    wrap.querySelector('[data-add]').addEventListener('click', submit);
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+      setTimeout(function () { input.focus(); input.select(); }, 30);
+    }
+  }
+
+  function addMaterialWithQty(input, name, variant) {
+    var label = formatSelection(name, variant);
+    promptMaterialQuantity(label, function (qty) {
+      appendToInput(input, formatSelectionWithQty(name, variant, qty));
+    });
   }
 
   function buildPickerHtml() {
@@ -93,7 +188,7 @@
       + '<div class="empire-materials-picker-panel">'
       + '<input type="search" class="empire-materials-search" placeholder="Search materials…" autocomplete="off">'
       + '<div class="empire-materials-list">' + rows + '</div>'
-      + '<p class="empire-materials-picker-hint">Tap a material to add it. Items with options expand on tap (mobile) or hover (desktop).</p>'
+      + '<p class="empire-materials-picker-hint">Tap a material, enter a quantity, then it is saved to the list. Totals appear in Analytics at month end.</p>'
       + '</div>';
   }
 
@@ -135,13 +230,13 @@
           row.classList.toggle('expanded', !wasOpen);
           return;
         }
-        appendToInput(input, formatSelection(btn.getAttribute('data-name'), btn.getAttribute('data-variant')));
+        addMaterialWithQty(input, btn.getAttribute('data-name'), btn.getAttribute('data-variant'));
       });
     });
     picker.querySelectorAll('.empire-mat-variant').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        appendToInput(input, formatSelection(btn.getAttribute('data-name'), btn.getAttribute('data-variant')));
+        addMaterialWithQty(input, btn.getAttribute('data-name'), btn.getAttribute('data-variant'));
         var row = btn.closest('.empire-mat-row');
         if (row) row.classList.remove('expanded');
       });
@@ -170,4 +265,7 @@
   window.EMPIRE_ELECTRICAL_MATERIALS = CATALOG;
   window.empireMaterialsPickerMount = mount;
   window.empireMaterialsFormatSelection = formatSelection;
+  window.empireMaterialsFormatSelectionWithQty = formatSelectionWithQty;
+  window.empireMaterialsParseText = parseMaterialsText;
+  window.empireMaterialsAggregateUsage = aggregateMaterialsUsage;
 })();

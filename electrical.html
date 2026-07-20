@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="assets/empire.css?v=2026-07-19-android-stable-v3">
 <link rel="stylesheet" href="assets/empire-dept.css?v=2026-07-20-edit-place">
 <link rel="stylesheet" href="assets/empire-civil-worker.css?v=2026-07-19-android-stable-v3">
-<link rel="stylesheet" href="assets/empire-electrical-materials.css?v=2026-07-20-materials-textarea">
+<link rel="stylesheet" href="assets/empire-electrical-materials.css?v=2026-07-20-mat-qty">
 </head>
 <body class="auth-login-visible">
 <div class="login-page show" id="loginPage">
@@ -333,7 +333,7 @@
 <script src="assets/empire-auth.js?v=2026-07-19-android-stable-v3"></script>
 <script src="assets/empire-core.js"></script>
 <script src="assets/empire-assign-voice.js"></script>
-<script src="assets/empire-electrical-materials.js?v=2026-07-20-materials-textarea"></script>
+<script src="assets/empire-electrical-materials.js?v=2026-07-20-mat-qty"></script>
 <div class="modal" id="imgModal" onclick="closeImg()"><img id="imgBig" style="max-width:92%;max-height:92%;border-radius:10px;"></div>
 <div class="modal" id="fieldReportModal" onclick="if(event.target===this)closeFieldReportModal()">
   <div class="modal-box field-report-modal-box" id="fieldReportModalBody" onclick="event.stopPropagation()"></div>
@@ -359,7 +359,7 @@ function applyDeptPerms(){ if(window.tsPerm) window.tsPerm(); if(window.tsLoadGl
 function handleLogin(e){ empireAuthLogin(e, 'electrical department', { onSuccess: function(){ enterApp(); } }); }
 function logout(){ empireAuthLogout({ extraKeys: ['eldept_jobs_cache'], redirect: 'index.html', reload: false }); }
 function forceSessionLogout(d){ empireAuthHandleInvalidSession_(d, { extraKeys: ['eldept_jobs_cache'], redirect: 'index.html', reload: false }); }
-function enterDeptApp(){ document.getElementById('loginPage').classList.remove('show'); if(typeof empireAuthMarkLoginVisible==='function') empireAuthMarkLoginVisible(false); document.getElementById('mainContainer').classList.add('show'); applyDeptPerms(); refreshPerms(); document.getElementById('j-date').value=new Date().toISOString().split('T')[0]; document.getElementById('cc-date').value=new Date().toISOString().split('T')[0]; empireBindFilterPersistence({ key:'eldept_list_filters', fields:['jf-month','jf-type','jf-search'], onApply:renderJobs }); loadJobs(); loadFieldReports(); }
+function enterDeptApp(){ document.getElementById('loginPage').classList.remove('show'); if(typeof empireAuthMarkLoginVisible==='function') empireAuthMarkLoginVisible(false); document.getElementById('mainContainer').classList.add('show'); applyDeptPerms(); refreshPerms(); document.getElementById('j-date').value=new Date().toISOString().split('T')[0]; document.getElementById('cc-date').value=new Date().toISOString().split('T')[0]; if(typeof empireMaterialsPickerMount==='function') empireMaterialsPickerMount('j-materials'); empireBindFilterPersistence({ key:'eldept_list_filters', fields:['jf-month','jf-type','jf-search'], onApply:renderJobs }); loadJobs(); loadFieldReports(); }
 function refreshPerms(){ var now=Date.now(); if(now-(_lastPermFetch||0)<300000) return; _lastPermFetch=Date.now(); empireAuthRefreshPerms(function(){ applyDeptPerms(); if(window._applyIssuePerms) window._applyIssuePerms(); }); }
 var _lastPermFetch=0;
 window.addEventListener('load',()=>{ empireAuthPageBoot({ dept: 'electrical department', onEnter: enterApp }); });
@@ -627,8 +627,8 @@ function openFieldReportEditor(id){
   h+='<textarea id="frEditNote" class="field-report-editor-note" rows="4">'+_esc(r.note||'')+'</textarea>';
   h+='<p class="field-report-editor-hint">This text becomes the job line in the monthly report. Voice notes are not copied.</p>';
   h+='<label class="field-report-modal-label" for="frEditMaterials" style="margin-top:14px;display:block;">Materials / quantity</label>';
-  h+='<textarea id="frEditMaterials" class="field-report-editor-materials" rows="5" placeholder="e.g. Main Sensor 63a&#10;Cable Single 2x2.5">'+_esc(r.materials||'')+'</textarea>';
-  h+='<p class="field-report-editor-hint">Saved to the Materials column in Jobs and the monthly report.</p>';
+  h+='<textarea id="frEditMaterials" class="field-report-editor-materials" rows="5" placeholder="e.g. 2 × Main Sensor 40a&#10;3 × Cable Single 2x2.5">'+_esc(r.materials||'')+'</textarea>';
+  h+='<p class="field-report-editor-hint">One material per line with quantity, e.g. <strong>2 × Main Sensor 40a</strong>. Saved to Jobs and counted in Analytics.</p>';
   h+='</div>';
   if(hasPhoto || hasInvoice || hasVoice || fieldReportType_(r)==='refundable'){
     h+='<div class="field-report-editor-side">';
@@ -1145,6 +1145,17 @@ function renderJobAnalytics(){
     h+='<h3>Top Job Types'+(m?' ('+m+')':' (all time)')+'</h3><table><thead><tr><th>Job</th><th>Count</th></tr></thead><tbody>';
     topJobs.forEach(j=>{ h+='<tr><td>'+_esc(j)+'</td><td>'+jobTypes[j]+'</td></tr>'; });
     h+='</tbody></table>';
+  }
+  if(typeof empireMaterialsAggregateUsage==='function'){
+    var matUsage=empireMaterialsAggregateUsage(jobs.map(function(r){ return r.materials; }));
+    if(matUsage.length){
+      h+='<h3>Materials used'+(m?' ('+m+')':' (all time)')+'</h3>';
+      h+='<table><thead><tr><th>#</th><th>Material</th><th>Total qty</th></tr></thead><tbody>';
+      matUsage.forEach(function(item,i){
+        h+='<tr><td>'+(i+1)+'</td><td>'+_esc(item.name)+'</td><td style="font-weight:700;">'+item.qty+'</td></tr>';
+      });
+      h+='</tbody></table>';
+    }
   }
   document.getElementById('jobAnalyticsContent').innerHTML=h;
 }

@@ -125,6 +125,7 @@ var ISSUE_CONFIGS = {
     resetSuccessMsg: 'All electric issue data has been deleted.',
     maxAssignWorkers: 4,
     gpsTrades: ['electric'],
+    freeTextIssueType: true,
     jobPage: 'electric-issue.html',
     supervisorPage: 'electrical.html',
     embeddedInDept: false,

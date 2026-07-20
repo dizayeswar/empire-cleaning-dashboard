@@ -353,8 +353,8 @@ function workerFieldReportRenderMine_() {
     if (amountLabel) meta.push('<span class="worker-field-my-amount">' + workerFieldReportEsc_(amountLabel) + '</span>');
     if (voiceBadge) meta.push(voiceBadge);
     if (r.invoicePhoto) meta.push('<span class="worker-field-my-invoice-ok">Invoice added</span>');
-    var cardClass = 'worker-field-my-card' + (needsInvoice ? ' worker-field-my-card-needs-invoice' : '');
-    var clickAttr = needsInvoice ? (' onclick="workerFieldReportOpenInvoiceModal(' + JSON.stringify(String(r.id || '')) + ')" role="button" tabindex="0"') : '';
+    var cardClass = 'worker-field-my-card worker-field-my-card-tappable' + (needsInvoice ? ' worker-field-my-card-needs-invoice' : '');
+    var clickAttr = ' onclick="workerFieldReportOpenView(' + JSON.stringify(String(r.id || '')) + ')" role="button" tabindex="0" aria-label="View report details"';
     return '<article class="' + cardClass + '"' + clickAttr + '>'
       + media
       + '<div class="worker-field-my-body">'
@@ -362,13 +362,64 @@ function workerFieldReportRenderMine_() {
       + workerFieldReportTypeBadgeHtml_(r)
       + '<time class="worker-field-my-date">' + workerFieldReportEsc_(r.date || '') + '</time>'
       + '</div>'
-      + (needsInvoice ? '<div class="worker-field-my-invoice-missing">Invoice photo missing — tap to add</div>' : '')
+      + (needsInvoice ? '<div class="worker-field-my-invoice-missing">Invoice photo missing</div>' : '')
       + (r.place ? ('<div class="worker-field-my-place">' + workerFieldReportEsc_(r.place) + '</div>') : '')
       + (r.note ? ('<p class="worker-field-my-note">' + workerFieldReportEsc_(r.note) + '</p>') : '')
       + (r.materials ? ('<p class="worker-field-my-note">' + workerFieldReportEsc_(r.materials) + '</p>') : '')
       + (meta.length ? ('<div class="worker-field-my-meta">' + meta.join('') + '</div>') : '')
       + '</div></article>';
   }).join('') + '</div>';
+}
+
+function workerFieldReportStatusLabel_(r) {
+  var s = String((r && r.status) || 'pending').toLowerCase();
+  if (s === 'transferred') return 'Added to monthly report';
+  return 'Waiting for department review';
+}
+
+function workerFieldReportOpenView_(id) {
+  var r = _wfrReports.find(function (x) { return String(x.id) === String(id); });
+  if (!r) return;
+  var modal = document.getElementById('wfrViewModal');
+  var body = document.getElementById('wfrViewModalBody');
+  if (!modal || !body) return;
+  var amountLabel = workerFieldReportAmountLabel_(r.amount);
+  var h = '<div class="worker-field-view">';
+  h += '<p class="worker-field-view-lead">Read only — you cannot edit a submitted report.</p>';
+  h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Type</span><span class="worker-field-view-value">' + workerFieldReportTypeBadgeHtml_(r) + '</span></div>';
+  h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Date</span><span class="worker-field-view-value">' + workerFieldReportEsc_(r.date || '') + '</span></div>';
+  h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Status</span><span class="worker-field-view-value">' + workerFieldReportEsc_(workerFieldReportStatusLabel_(r)) + '</span></div>';
+  if (r.place) h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Place</span><span class="worker-field-view-value">' + workerFieldReportEsc_(r.place) + '</span></div>';
+  if (r.note) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">Note</span><p class="worker-field-view-text">' + workerFieldReportEsc_(r.note) + '</p></div>';
+  if (r.materials) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">Materials</span><p class="worker-field-view-text">' + workerFieldReportEsc_(r.materials) + '</p></div>';
+  if (amountLabel) h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Amount</span><span class="worker-field-view-value worker-field-view-amount">' + workerFieldReportEsc_(amountLabel) + '</span></div>';
+  if (r.photo) {
+    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">Job photo</span>';
+    h += '<img class="worker-field-view-photo" src="' + workerFieldReportEsc_(r.photo) + '" onclick="bigImg(this.src)" alt="Job photo"></div>';
+  }
+  if (workerFieldReportType_(r) === 'refundable') {
+    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">Invoice photo</span>';
+    if (r.invoicePhoto) {
+      h += '<img class="worker-field-view-photo" src="' + workerFieldReportEsc_(r.invoicePhoto) + '" onclick="bigImg(this.src)" alt="Invoice photo">';
+    } else {
+      h += '<p class="worker-field-view-missing">Not submitted</p>';
+    }
+    h += '</div>';
+  }
+  if (r.voiceNote && r.voiceNote.url && typeof assignVoiceNoteDisplayHtml === 'function') {
+    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">Voice note</span>';
+    h += assignVoiceNoteDisplayHtml(r.voiceNote, { worker: true });
+    h += '</div>';
+  }
+  h += '</div>';
+  body.innerHTML = h;
+  if (typeof assignVoiceBindPlayers === 'function') assignVoiceBindPlayers(body);
+  modal.classList.add('show');
+}
+
+function workerFieldReportCloseView_() {
+  var modal = document.getElementById('wfrViewModal');
+  if (modal) modal.classList.remove('show');
 }
 
 function workerFieldReportOpenInvoiceModal_(id) {
@@ -578,6 +629,8 @@ function workerFieldReportSubmit_() {
   });
 }
 
+window.workerFieldReportOpenView = workerFieldReportOpenView_;
+window.workerFieldReportCloseView = workerFieldReportCloseView_;
 window.workerFieldReportHandleRefundableCheck = workerFieldReportHandleRefundableCheck_;
 window.workerFieldReportSwitchTab = workerFieldReportSwitchTab_;
 window.workerFieldReportSubmit = workerFieldReportSubmit_;

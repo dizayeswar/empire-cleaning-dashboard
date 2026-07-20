@@ -282,6 +282,78 @@ body:not(.civil-worker-mode) #workerApp {
   background: var(--card, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+.worker-field-my-card-tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.worker-field-my-card-tappable:active {
+  opacity: 0.92;
+}
+.worker-field-view-modal {
+  padding: 14px 14px 24px;
+}
+.worker-field-view-lead {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(91, 124, 250, 0.08);
+  border: 1px solid rgba(91, 124, 250, 0.16);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+.worker-field-view-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.worker-field-view-block {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.worker-field-view-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.worker-field-view-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+.worker-field-view-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.worker-field-view-amount {
+  color: var(--c-money, #b15a17);
+}
+.worker-field-view-photo {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 10px;
+  border: 2px solid var(--card-border);
+  display: block;
+}
+.worker-field-view-missing {
+  margin: 0;
+  font-size: 13px;
+  color: #c0650a;
+  font-weight: 600;
+}
 .worker-field-my-card-needs-invoice {
   border-color: rgba(230, 126, 34, 0.45);
   box-shadow: 0 0 0 1px rgba(230, 126, 34, 0.12);

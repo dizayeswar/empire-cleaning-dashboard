@@ -68,6 +68,11 @@ function workerFieldReportType_(rOrAmount) {
   return workerFieldReportParseAmount_(rOrAmount) > 0 ? 'refundable' : 'maintenance';
 }
 
+function workerFieldReportRefLabel_(r) {
+  var n = Number(r && r.num);
+  return (n > 0) ? ('R#' + n) : '';
+}
+
 function workerFieldReportTypeBadgeHtml_(r) {
   var t = workerFieldReportType_(r);
   if (t === 'refundable') return '<span class="worker-field-my-type refundable">Refundable</span>';
@@ -383,14 +388,16 @@ function workerFieldReportRenderMine_() {
     if (amountLabel) meta.push('<span class="worker-field-my-amount">' + workerFieldReportEsc_(amountLabel) + '</span>');
     if (voiceBadge) meta.push(voiceBadge);
     if (r.invoicePhoto) meta.push('<span class="worker-field-my-invoice-ok">Invoice added</span>');
+    var refLabel = workerFieldReportRefLabel_(r);
     var cardClass = 'worker-field-my-card worker-field-my-card-tappable' + (needsInvoice ? ' worker-field-my-card-needs-invoice' : '');
     return '<button type="button" class="' + cardClass + '" data-report-id="' + workerFieldReportAttr_(r.id || '') + '" aria-label="View report details">'
       + media
       + '<div class="worker-field-my-body">'
       + '<div class="worker-field-my-top">'
-      + workerFieldReportTypeBadgeHtml_(r)
+      + (refLabel ? ('<span class="worker-field-my-ref">' + workerFieldReportEsc_(refLabel) + '</span>') : '')
       + '<time class="worker-field-my-date">' + workerFieldReportEsc_(r.date || '') + '</time>'
       + '</div>'
+      + '<div class="worker-field-my-badges">' + workerFieldReportTypeBadgeHtml_(r) + '</div>'
       + (needsInvoice ? '<div class="worker-field-my-invoice-missing">Invoice photo missing</div>' : '')
       + (r.place ? ('<div class="worker-field-my-place">' + workerFieldReportEsc_(r.place) + '</div>') : '')
       + (r.note ? ('<p class="worker-field-my-note">' + workerFieldReportEsc_(r.note) + '</p>') : '')
@@ -414,8 +421,10 @@ function workerFieldReportOpenView_(id) {
   var body = document.getElementById('wfrViewModalBody');
   if (!modal || !body) return;
   var amountLabel = workerFieldReportAmountLabel_(r.amount);
+  var refLabel = workerFieldReportRefLabel_(r);
   var h = '<div class="worker-field-view">';
   h += '<p class="worker-field-view-lead">Read only — you cannot edit a submitted report.</p>';
+  if (refLabel) h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Reference</span><span class="worker-field-view-value worker-field-view-ref">' + workerFieldReportEsc_(refLabel) + '</span></div>';
   h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Type</span><span class="worker-field-view-value">' + workerFieldReportTypeBadgeHtml_(r) + '</span></div>';
   h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Date</span><span class="worker-field-view-value">' + workerFieldReportEsc_(r.date || '') + '</span></div>';
   h += '<div class="worker-field-view-row"><span class="worker-field-view-label">Status</span><span class="worker-field-view-value">' + workerFieldReportEsc_(workerFieldReportStatusLabel_(r)) + '</span></div>';
@@ -643,8 +652,9 @@ function workerFieldReportSubmit_() {
     return fetchJSONRetry(body, 2, 45000);
   }).then(function (d) {
     if (d && (d.ok || d.success)) {
+      var sentRef = Number(d.num) > 0 ? ('R#' + d.num + ' — ') : '';
       if (msg) {
-        msg.textContent = '\u2705 ' + workerFieldReportUi_('submitSuccess', 'Report sent.');
+        msg.textContent = '\u2705 ' + sentRef + workerFieldReportUi_('submitSuccess', 'Report sent.');
         msg.className = 'worker-field-msg worker-field-msg-ok';
       }
       workerFieldReportClearForm_(false);

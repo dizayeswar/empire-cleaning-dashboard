@@ -21,7 +21,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-19-issue-monthly-v1';
+var SCRIPT_VERSION = '2026-07-20-field-report-ref-v1';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -174,6 +174,61 @@ function ensureIssueNums_(sheet, sheetName, rows) {
   invalidateIssuesCache_(sheetName);
   return next;
 }
+
+// ---- Permanent field report numbers (R#1, R#2, ...) — never reused after delete ----
+var FIELD_REPORT_NUM_COL = 19;
+function frnumKey_() { return 'frnum_' + ELECTRIC_WORKER_REPORTS_SHEET; }
+function ensureFieldReportNums_(sheet, rows) {
+  if (!sheet || !rows || rows.length < 2) return 0;
+  if (String(rows[0][FIELD_REPORT_NUM_COL - 1] || '') !== 'num') {
+    sheet.getRange(1, FIELD_REPORT_NUM_COL).setValue('num');
+  }
+  var maxNum = 0, missing = false, i;
+  for (i = 1; i < rows.length; i++) {
+    var v = Number(rows[i][FIELD_REPORT_NUM_COL - 1] || 0);
+    if (v > maxNum) maxNum = v;
+    if (!v) missing = true;
+  }
+  if (!missing) return maxNum;
+  var next = maxNum, out = [];
+  for (i = 1; i < rows.length; i++) {
+    var cur = Number(rows[i][FIELD_REPORT_NUM_COL - 1] || 0);
+    if (!cur) { next++; cur = next; rows[i][FIELD_REPORT_NUM_COL - 1] = cur; }
+    out.push([cur]);
+  }
+  sheet.getRange(2, FIELD_REPORT_NUM_COL, out.length, 1).setValues(out);
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var key = frnumKey_();
+    if (next > Number(props.getProperty(key) || 0)) props.setProperty(key, String(next));
+  } catch (e) {}
+  return next;
+}
+function withScriptLock_(fn) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (e) {
+    throw new Error('Server busy — please try again.');
+  }
+  try {
+    return fn();
+  } finally {
+    try { lock.releaseLock(); } catch (e2) {}
+  }
+}
+function nextFieldReportNum_(sheet) {
+  return withScriptLock_(function () {
+    var rows = sheet.getDataRange().getValues();
+    var maxNum = ensureFieldReportNums_(sheet, rows);
+    var props = PropertiesService.getScriptProperties();
+    var key = frnumKey_();
+    var num = Math.max(Number(props.getProperty(key) || 0), maxNum) + 1;
+    try { props.setProperty(key, String(num)); } catch (e) {}
+    return num;
+  });
+}
+
 function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify({ok:true,msg:'Empire API running',version:SCRIPT_VERSION})).setMimeType(ContentService.MimeType.JSON);
 }
@@ -2824,7 +2879,7 @@ function electricReportMonthOfDate_(dateStr) {
 
 function ensureElectricWorkerReportsSheet_(sheet) {
   if (!sheet) return;
-  var headers = ['id','date','place','note','photo','voiceNote','reportedBy','workerName','createdAt','amount','reportType','status','transferredJobId','editedNote','transferredAt','transferredBy','materials','invoicePhoto'];
+  var headers = ['id','date','place','note','photo','voiceNote','reportedBy','workerName','createdAt','amount','reportType','status','transferredJobId','editedNote','transferredAt','transferredBy','materials','invoicePhoto','num'];
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
     return;
@@ -2865,7 +2920,17 @@ function handleAddElectricWorkerReport(body, auth) {
     return {ok:false,success:false,error:'missing_job_photo',message:'Refundable reports need a job photo before sending.'};
   }
   var materials = String(body.materials || '').trim();
-  var id = body.id || ('ewr-' + now.getTime());
+  var id = String(body.id || '') || ('ewr-' + now.getTime());
+  var rows = sheet.getDataRange().getValues();
+  if (body.id) {
+    for (var k = 1; k < rows.length; k++) {
+      if (String(rows[k][0]) === id) {
+        var existingNum = Number(rows[k][FIELD_REPORT_NUM_COL - 1] || 0);
+        return {ok:true,success:true,id:id,num:existingNum > 0 ? existingNum : null,deduped:true};
+      }
+    }
+  }
+  var num = nextFieldReportNum_(sheet);
   sheet.appendRow([
     id,
     dateStr,
@@ -2884,9 +2949,10 @@ function handleAddElectricWorkerReport(body, auth) {
     '',
     '',
     materials,
-    invoicePhoto
+    invoicePhoto,
+    num
   ]);
-  return {ok:true,success:true,id:id};
+  return {ok:true,success:true,id:id,num:num};
 }
 
 function handleUpdateElectricWorkerReportInvoice(body, auth) {
@@ -2935,6 +3001,7 @@ function handleGetElectricWorkerReports(body, auth) {
   ensureElectricWorkerReportsSheet_(sheet);
   var tz = ss.getSpreadsheetTimeZone();
   var rows = sheet.getDataRange().getValues();
+  ensureFieldReportNums_(sheet, rows);
   var workerOnly = auth && String(auth.role || '').toLowerCase() === 'worker';
   var workerUser = workerOnly ? normalizeWorkerId_(auth.username) : '';
   var out = [];
@@ -2954,6 +3021,7 @@ function handleGetElectricWorkerReports(body, auth) {
     if (!status) status = 'pending';
     out.push({
       id: String(rows[i][0] || ''),
+      num: Number(rows[i][FIELD_REPORT_NUM_COL - 1] || 0) || 0,
       date: ds,
       place: String(rows[i][2] || ''),
       note: String(rows[i][3] || ''),

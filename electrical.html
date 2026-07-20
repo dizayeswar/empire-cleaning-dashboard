@@ -461,10 +461,9 @@ function loadFieldReports(force){
     .finally(function(){ if(spin) spin.classList.remove('spinning'); });
 }
 function fieldReportRef_(r) {
-  var id = String((r && r.id) || '');
-  if (id.indexOf('ewr-') === 0) return '#FR' + id.slice(-6);
-  if (id.length > 8) return '#FR' + id.slice(-6);
-  return id ? ('#FR' + id) : '#FR';
+  var n = Number(r && r.num);
+  if (n > 0) return 'R#' + n;
+  return 'R#—';
 }
 function fieldReportType_(r) {
   if (r && r.reportType === 'refundable') return 'refundable';

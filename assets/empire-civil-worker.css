@@ -481,6 +481,22 @@ body.worker-field-modal-open {
   align-items: center;
   gap: 8px;
 }
+.worker-field-my-ref {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--header-accent, #185fa5);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.worker-field-view-ref {
+  font-weight: 800;
+  color: var(--header-accent, #185fa5);
+}
+.worker-field-my-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .worker-field-my-type {
   display: inline-block;
   font-size: 10px;

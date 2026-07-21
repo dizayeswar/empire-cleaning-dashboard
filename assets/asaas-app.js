@@ -22,18 +22,21 @@ var ASAAS_SPOTS = ['Corridor','In front of apartment door','Service stairs','Ele
 var ASAAS_APARTMENTS = ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 var _asaasItems = [];
-var _asaasLogItems = [{ desc: '', photo1: '', photo2: '', uploading1: false, uploading2: false }];
+var _asaasLogItems = [{ desc: '', photo: '', uploading: false }];
 var _asaasReturnPhotoUrl = '';
+var _asaasStickerPhotoUrl = '';
 var _asaasReturnUploading = false;
+var _asaasStickerUploading = false;
 var _asaasSubmitting = false;
 var _asaasActiveTab = 'log';
 var _asaasReturnId = '';
+var _asaasStickerItemId = '';
 
 function asaasNewLogItem_() {
-  return { desc: '', photo1: '', photo2: '', uploading1: false, uploading2: false };
+  return { desc: '', photo: '', uploading: false };
 }
 function asaasLogItemUploading_() {
-  return _asaasLogItems.some(function (it) { return it.uploading1 || it.uploading2; });
+  return _asaasLogItems.some(function (it) { return it.uploading; });
 }
 
 function asaasToken_() { return empireGetToken() || ''; }
@@ -143,20 +146,13 @@ function asaasRenderLogItemBlocks_() {
     html += '<div class="asaas-item-block-head">' + asaasEsc_(asaasT('itemNumber', { n: i + 1 })) + '</div>';
     html += '<label class="worker-field-label" for="asaasItemDesc' + i + '">' + asaasT('item') + '</label>';
     html += '<input type="text" id="asaasItemDesc' + i + '" class="worker-field-input asaas-item-desc" data-idx="' + i + '" value="' + asaasEsc_(it.desc) + '" data-asaas-i18n-placeholder="itemPlaceholder" placeholder="' + asaasEsc_(asaasT('itemPlaceholder')) + '" autocomplete="off">';
-    html += '<div class="asaas-item-photos">';
-    [1, 2].forEach(function (slot) {
-      var pKey = slot === 2 ? 'photo2' : 'photo1';
-      var url = slot === 2 ? it.photo2 : it.photo1;
-      html += '<div class="asaas-item-photo-slot">';
-      html += '<label class="worker-field-label">' + asaasT(pKey) + '</label>';
-      html += '<button type="button" class="worker-field-photo-btn" onclick="asaasPickItemPhoto_(' + i + ',' + slot + ')">' + asaasT('addPhoto') + '</button>';
-      html += '<input type="file" id="asaasFileCamera-' + i + '-' + slot + '" class="worker-sr-file-input" accept="image/*" capture="environment" onchange="asaasHandleItemFile_(event,' + i + ',' + slot + ')">';
-      html += '<input type="file" id="asaasFileGallery-' + i + '-' + slot + '" class="worker-sr-file-input" accept="image/*" onchange="asaasHandleItemFile_(event,' + i + ',' + slot + ')">';
-      html += '<p id="asaasPhotoStatus-' + i + '-' + slot + '" class="worker-field-photo-status">' + (url ? ('\u2705 ' + asaasEsc_(asaasT('photoReady'))) : '') + '</p>';
-      html += url ? ('<img class="worker-field-preview-img" src="' + asaasEsc_(url) + '" alt="">') : '';
-      html += '</div>';
-    });
-    html += '</div></div>';
+    html += '<label class="worker-field-label">' + asaasT('photo') + '</label>';
+    html += '<button type="button" class="worker-field-photo-btn" onclick="asaasPickItemPhoto_(' + i + ')">' + asaasT('addPhoto') + '</button>';
+    html += '<input type="file" id="asaasFileCamera-' + i + '" class="worker-sr-file-input" accept="image/*" capture="environment" onchange="asaasHandleItemFile_(event,' + i + ')">';
+    html += '<input type="file" id="asaasFileGallery-' + i + '" class="worker-sr-file-input" accept="image/*" onchange="asaasHandleItemFile_(event,' + i + ')">';
+    html += '<p id="asaasPhotoStatus-' + i + '" class="worker-field-photo-status">' + (it.photo ? ('\u2705 ' + asaasEsc_(asaasT('photoReady'))) : '') + '</p>';
+    if (it.photo) html += '<img class="worker-field-preview-img" src="' + asaasEsc_(it.photo) + '" alt="">';
+    html += '</div>';
   }
   host.innerHTML = html;
 }
@@ -357,58 +353,75 @@ function asaasRenderOfficeList_() {
 }
 
 function asaasPickPhoto_(kind) {
-  if (kind !== 'return') return;
-  if (typeof empireWorkerPickPhoto === 'function') {
-    empireWorkerPickPhoto({
-      camera: 'asaasReturnFileCamera',
-      gallery: 'asaasReturnFileGallery',
-      title: asaasT('photoTitleReturn')
-    });
+  if (kind === 'return') {
+    if (typeof empireWorkerPickPhoto === 'function') {
+      empireWorkerPickPhoto({
+        camera: 'asaasReturnFileCamera',
+        gallery: 'asaasReturnFileGallery',
+        title: asaasT('photoTitleReturn')
+      });
+    }
+    return;
+  }
+  if (kind === 'sticker') {
+    if (typeof empireWorkerPickPhoto === 'function') {
+      empireWorkerPickPhoto({
+        camera: 'asaasStickerFileCamera',
+        gallery: 'asaasStickerFileGallery',
+        title: asaasT('photoTitleSticker')
+      });
+    }
   }
 }
-function asaasPickItemPhoto_(idx, slot) {
-  slot = slot === 2 ? 2 : 1;
+function asaasPickItemPhoto_(idx) {
   idx = Number(idx);
   if (typeof empireWorkerPickPhoto === 'function') {
     empireWorkerPickPhoto({
-      camera: 'asaasFileCamera-' + idx + '-' + slot,
-      gallery: 'asaasFileGallery-' + idx + '-' + slot,
-      title: asaasT(slot === 2 ? 'photoTitle2' : 'photoTitle')
+      camera: 'asaasFileCamera-' + idx,
+      gallery: 'asaasFileGallery-' + idx,
+      title: asaasT('photoTitle')
     });
   }
 }
 function asaasProcessPhoto_(file, kind) {
-  if (!file || kind !== 'return') return;
-  var status = document.getElementById('asaasReturnPhotoStatus');
+  if (!file) return;
+  var isSticker = kind === 'sticker';
+  var isReturn = kind === 'return';
+  if (!isReturn && !isSticker) return;
+  var status = document.getElementById(isSticker ? 'asaasStickerPhotoStatus' : 'asaasReturnPhotoStatus');
   if (status) status.textContent = asaasT('uploading');
-  _asaasReturnUploading = true;
+  if (isSticker) _asaasStickerUploading = true;
+  else _asaasReturnUploading = true;
   empireCompressImage(file, ASAAS_PHOTO_FOLDER, function (url) {
-    _asaasReturnUploading = false;
+    if (isSticker) _asaasStickerUploading = false;
+    else _asaasReturnUploading = false;
     if (url) {
-      _asaasReturnPhotoUrl = url;
-      var im = document.getElementById('asaasReturnPreview');
-      if (im) { im.src = url; im.style.display = 'block'; }
+      if (isSticker) {
+        _asaasStickerPhotoUrl = url;
+        var imS = document.getElementById('asaasStickerPreview');
+        if (imS) { imS.src = url; imS.style.display = 'block'; }
+      } else {
+        _asaasReturnPhotoUrl = url;
+        var im = document.getElementById('asaasReturnPreview');
+        if (im) { im.src = url; im.style.display = 'block'; }
+      }
       if (status) status.textContent = '\u2705 ' + asaasT('photoReady');
     } else if (status) {
       status.textContent = '\u274C ' + (_lastEmpireUploadError || asaasT('uploadFailed'));
     }
   }, { maxSize: 1400, quality: 0.7 });
 }
-function asaasProcessItemPhoto_(file, idx, slot) {
+function asaasProcessItemPhoto_(file, idx) {
   if (!file) return;
-  slot = slot === 2 ? 2 : 1;
   idx = Number(idx);
   if (!_asaasLogItems[idx]) return;
-  var status = document.getElementById('asaasPhotoStatus-' + idx + '-' + slot);
+  var status = document.getElementById('asaasPhotoStatus-' + idx);
   if (status) status.textContent = asaasT('uploading');
-  if (slot === 2) _asaasLogItems[idx].uploading2 = true;
-  else _asaasLogItems[idx].uploading1 = true;
+  _asaasLogItems[idx].uploading = true;
   empireCompressImage(file, ASAAS_PHOTO_FOLDER, function (url) {
-    if (slot === 2) _asaasLogItems[idx].uploading2 = false;
-    else _asaasLogItems[idx].uploading1 = false;
+    _asaasLogItems[idx].uploading = false;
     if (url) {
-      if (slot === 2) _asaasLogItems[idx].photo2 = url;
-      else _asaasLogItems[idx].photo1 = url;
+      _asaasLogItems[idx].photo = url;
       asaasRenderLogItemBlocks_();
     } else if (status) {
       status.textContent = '\u274C ' + (_lastEmpireUploadError || asaasT('uploadFailed'));
@@ -420,9 +433,9 @@ function asaasHandleFile_(e, kind) {
   if (f) asaasProcessPhoto_(f, kind);
   e.target.value = '';
 }
-function asaasHandleItemFile_(e, idx, slot) {
+function asaasHandleItemFile_(e, idx) {
   var f = e.target.files && e.target.files[0];
-  if (f) asaasProcessItemPhoto_(f, idx, slot);
+  if (f) asaasProcessItemPhoto_(f, idx);
   e.target.value = '';
 }
 
@@ -438,7 +451,7 @@ function asaasClearForm_() {
 }
 
 function asaasSubmitItem_() {
-  if (_asaasSubmitting || asaasLogItemUploading_() || _asaasReturnUploading) return;
+  if (_asaasSubmitting || asaasLogItemUploading_() || _asaasReturnUploading || _asaasStickerUploading) return;
   asaasSyncLogItemsFromDom_();
   var building = (document.getElementById('asaasBuilding') || {}).value || '';
   var floor = (document.getElementById('asaasFloor') || {}).value || '';
@@ -454,11 +467,11 @@ function asaasSubmitItem_() {
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
     var desc = String(it.desc || '').trim();
-    if (!desc && !it.photo1 && !it.photo2) {
+    if (!desc && !it.photo) {
       if (msg) { msg.textContent = asaasT('needDescriptionItem', { n: i + 1 }); msg.className = 'worker-field-msg worker-field-msg-error'; }
       return;
     }
-    if (!it.photo1 && !it.photo2) {
+    if (!it.photo) {
       if (msg) { msg.textContent = asaasT('needPhotoItem', { n: i + 1 }); msg.className = 'worker-field-msg worker-field-msg-error'; }
       return;
     }
@@ -478,8 +491,7 @@ function asaasSubmitItem_() {
         spot: spot,
         itemDescription: String(it.desc || '').trim(),
         apartment: apartment,
-        photo: it.photo1 || '',
-        photo2: it.photo2 || '',
+        photo: it.photo || '',
         removedByName: empireGetUser() || ''
       }, 2, 45000).then(function (d) {
         if (d && (d.ok || d.success)) {
@@ -522,10 +534,12 @@ function asaasOpenDetail_(id) {
 function asaasOpenViewModal_(r) {
   _asaasReturnId = r.status !== 'returned' ? r.id : '';
   _asaasReturnPhotoUrl = '';
+  _asaasStickerItemId = r.status !== 'returned' ? r.id : '';
+  _asaasStickerPhotoUrl = '';
   var modal = document.getElementById('asaasViewModal');
   var body = document.getElementById('asaasViewModalBody');
   if (!modal || !body) return;
-  var canReturn = isAsaasMobile_() && r.status !== 'returned';
+  var inWarehouse = r.status !== 'returned';
   var h = '<div class="worker-field-view">';
   if (r.status === 'returned') h += '<p class="worker-field-view-lead">' + asaasEsc_(asaasT('readOnlyReturned')) + '</p>';
   h += '<div class="worker-field-view-row"><span class="worker-field-view-label">' + asaasT('reference') + '</span><span class="worker-field-view-value worker-field-view-ref">' + asaasEsc_(asaasRef_(r.num)) + '</span></div>';
@@ -534,14 +548,19 @@ function asaasOpenViewModal_(r) {
   h += '<div class="worker-field-view-row"><span class="worker-field-view-label">' + asaasT('spot') + '</span><span class="worker-field-view-value">' + asaasEsc_(asaasLocStr_(r)) + '</span></div>';
   if (r.apartment) h += '<div class="worker-field-view-row"><span class="worker-field-view-label">' + asaasT('apartment') + '</span><span class="worker-field-view-value">' + asaasEsc_(r.apartment) + '</span></div>';
   h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('item') + '</span><p class="worker-field-view-text">' + asaasEsc_(r.itemDescription || '') + '</p></div>';
-  if (r.photo) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('photo1') + '</span><img class="worker-field-view-photo" src="' + asaasEsc_(r.photo) + '" alt="" onclick="bigImg(this.src)"></div>';
-  if (r.photo2) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('photo2') + '</span><img class="worker-field-view-photo" src="' + asaasEsc_(r.photo2) + '" alt="" onclick="bigImg(this.src)"></div>';
+  if (r.photo) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('photo') + '</span><img class="worker-field-view-photo" src="' + asaasEsc_(r.photo) + '" alt="" onclick="bigImg(this.src)"></div>';
+  if (inWarehouse) {
+    h += '<hr style="margin:18px 0;border:none;border-top:1px solid var(--card-border);">';
+    h += asaasStickerSectionHtml_(r, true);
+  } else if (r.photo2) {
+    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('stickerPhoto') + '</span><img class="worker-field-view-photo" src="' + asaasEsc_(r.photo2) + '" alt="" onclick="bigImg(this.src)"></div>';
+  }
   if (r.status === 'returned') {
     h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + asaasT('returnDetails') + '</span>';
     h += '<p class="worker-field-view-text">' + asaasEsc_(r.returnedTo || '') + (r.returnApartment ? (' · ' + r.returnApartment) : '') + '</p>';
     if (r.returnPhoto) h += '<img class="worker-field-view-photo" src="' + asaasEsc_(r.returnPhoto) + '" alt="" onclick="bigImg(this.src)">';
     h += '</div>';
-  } else if (canReturn) {
+  } else if (isAsaasMobile_()) {
     h += '<hr style="margin:18px 0;border:none;border-top:1px solid var(--card-border);">';
     h += '<p class="worker-field-view-lead">' + asaasEsc_(asaasT('mobileReturnHint')) + '</p>';
     h += '<label class="worker-field-label" for="asaasReturnedTo">' + asaasT('returnedTo') + '</label>';
@@ -560,9 +579,65 @@ function asaasOpenViewModal_(r) {
   modal.classList.add('show');
 }
 
+function asaasStickerSectionHtml_(r, editable) {
+  var h = '<div class="worker-field-view-block asaas-sticker-block">';
+  h += '<span class="worker-field-view-label">' + asaasT('stickerPhoto') + '</span>';
+  if (r.photo2) {
+    h += '<img class="worker-field-view-photo" src="' + asaasEsc_(r.photo2) + '" alt="" onclick="bigImg(this.src)">';
+    return h + '</div>';
+  }
+  if (!editable) {
+    h += '<p class="worker-field-view-text">' + asaasEsc_(asaasT('stickerPhotoMissing')) + '</p></div>';
+    return h;
+  }
+  h += '<p class="worker-field-view-lead">' + asaasEsc_(asaasT('stickerPhotoHint')) + '</p>';
+  h += '<button type="button" class="worker-field-photo-btn" onclick="asaasPickPhoto_(\'sticker\')">' + asaasT('addPhoto') + '</button>';
+  h += '<input type="file" id="asaasStickerFileCamera" class="worker-sr-file-input" accept="image/*" capture="environment" onchange="asaasHandleFile_(event,\'sticker\')">';
+  h += '<input type="file" id="asaasStickerFileGallery" class="worker-sr-file-input" accept="image/*" onchange="asaasHandleFile_(event,\'sticker\')">';
+  h += '<p id="asaasStickerPhotoStatus" class="worker-field-photo-status"></p>';
+  h += '<img id="asaasStickerPreview" class="worker-field-preview-img" style="display:none" alt="">';
+  h += '<button type="button" id="asaasStickerBtn" class="worker-field-submit" onclick="asaasSaveStickerPhoto_()">' + asaasT('saveStickerPhoto') + '</button>';
+  h += '<p id="asaasStickerMsg" class="worker-field-msg"></p></div>';
+  return h;
+}
+
+function asaasSaveStickerPhoto_() {
+  if (!_asaasStickerItemId || _asaasStickerUploading) return;
+  var msg = document.getElementById('asaasStickerMsg');
+  if (!_asaasStickerPhotoUrl) {
+    if (msg) { msg.textContent = asaasT('needStickerPhoto'); msg.className = 'worker-field-msg worker-field-msg-error'; }
+    return;
+  }
+  var btn = document.getElementById('asaasStickerBtn');
+  if (btn) btn.disabled = true;
+  fetchJSONRetry({
+    action: 'updateAsaasItem',
+    token: asaasToken_(),
+    id: _asaasStickerItemId,
+    photo2: _asaasStickerPhotoUrl
+  }, 2, 45000).then(function (d) {
+    if (d && (d.ok || d.success)) {
+      if (msg) { msg.textContent = '\u2705 ' + asaasT('stickerPhotoSaved'); msg.className = 'worker-field-msg worker-field-msg-ok'; }
+      return asaasLoadItems_(true);
+    }
+    throw new Error((d && (d.message || d.error)) || 'Failed');
+  }).then(function () {
+    var r = _asaasItems.find(function (x) { return String(x.id) === String(_asaasStickerItemId); });
+    if (r) {
+      if (isAsaasMobile_()) asaasOpenViewModal_(r);
+      else asaasOpenReturnModal_(r);
+    }
+  }).catch(function (e) {
+    if (msg) { msg.textContent = '\u274C ' + String((e && e.message) || e); msg.className = 'worker-field-msg worker-field-msg-error'; }
+    if (btn) btn.disabled = false;
+  });
+}
+
 function asaasCloseViewModal_() {
   _asaasReturnId = '';
   _asaasReturnPhotoUrl = '';
+  _asaasStickerItemId = '';
+  _asaasStickerPhotoUrl = '';
   var modal = document.getElementById('asaasViewModal');
   if (modal) modal.classList.remove('show');
 }
@@ -570,6 +645,8 @@ function asaasCloseViewModal_() {
 function asaasOpenReturnModal_(r) {
   _asaasReturnId = r.id;
   _asaasReturnPhotoUrl = '';
+  _asaasStickerItemId = r.status !== 'returned' ? r.id : '';
+  _asaasStickerPhotoUrl = '';
   var modal = document.getElementById('asaasReturnModal');
   var body = document.getElementById('asaasReturnModalBody');
   if (!modal || !body) return;
@@ -580,6 +657,8 @@ function asaasOpenReturnModal_(r) {
   if (r.photo) h += '<img class="worker-field-view-photo" src="' + asaasEsc_(r.photo) + '" alt="" onclick="bigImg(this.src)">';
   h += '<p class="asaas-return-loc">' + asaasEsc_(asaasLocStr_(r)) + '</p>';
   if (!readOnly) {
+    h += asaasStickerSectionHtml_(r, true);
+    h += '<hr style="margin:16px 0;border:none;border-top:1px solid var(--card-border);">';
     h += '<label class="worker-field-label" for="asaasWarehouseNote">' + asaasT('warehouseNote') + '</label>';
     h += '<input type="text" id="asaasWarehouseNote" class="worker-field-input" value="' + asaasEsc_(r.warehouseNote || '') + '" placeholder="' + asaasEsc_(asaasT('warehouseNotePlaceholder')) + '">';
     h += '<label class="worker-field-label" for="asaasOfficeApartment">' + asaasT('apartment') + '</label>';
@@ -612,6 +691,8 @@ function asaasOpenReturnModal_(r) {
 function asaasCloseReturnModal_() {
   _asaasReturnId = '';
   _asaasReturnPhotoUrl = '';
+  _asaasStickerItemId = '';
+  _asaasStickerPhotoUrl = '';
   var modal = document.getElementById('asaasReturnModal');
   if (modal) modal.classList.remove('show');
 }

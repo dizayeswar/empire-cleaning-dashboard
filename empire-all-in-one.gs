@@ -22,7 +22,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-21-asaas-v3';
+var SCRIPT_VERSION = '2026-07-21-asaas-v4';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -4228,15 +4228,16 @@ function handleAddAsaasItem(body, auth) {
   var photo = String(body.photo || '').trim();
   var photo2 = String(body.photo2 || '').trim();
   var apartment = String(body.apartment || '').trim();
-  if (!itemDescription && !photo && !photo2) {
+  if (!itemDescription && !photo) {
     return {ok:false,success:false,error:'empty_item',message:'Add a description or photo before saving.'};
   }
   if (!building || !floor) {
     return {ok:false,success:false,error:'missing_location',message:'Building and floor are required.'};
   }
-  if (!photo && !photo2) {
-    return {ok:false,success:false,error:'missing_photo',message:'At least one corridor photo is required.'};
+  if (!photo) {
+    return {ok:false,success:false,error:'missing_photo',message:'A corridor photo is required.'};
   }
+  photo2 = '';
   var ss = getSS_();
   var sheet = ss.getSheetByName(ASAAS_SHEET) || ss.insertSheet(ASAAS_SHEET);
   ensureAsaasSheet_(sheet);
@@ -4264,9 +4265,7 @@ function handleAddAsaasItem(body, auth) {
   return {ok:true,success:true,id:id,num:num};
 }
 function handleUpdateAsaasItem(body, auth) {
-  if (isAsaasMobileGuard_(auth && auth.username)) {
-    return {ok:false,success:false,error:'not_allowed',message:'Use the office account to update warehouse notes.'};
-  }
+  var isGuard = isAsaasMobileGuard_(auth && auth.username);
   var id = String(body.id || '').trim();
   if (!id) return {ok:false,success:false,error:'missing_id',message:'Item id is required.'};
   var ss = getSS_();
@@ -4278,9 +4277,22 @@ function handleUpdateAsaasItem(body, auth) {
     return {ok:false,success:false,error:'already_returned',message:'Returned items cannot be edited.'};
   }
   var now = new Date().toISOString();
+  if (isGuard) {
+    var sticker = String(body.photo2 || '').trim();
+    if (!sticker) {
+      return {ok:false,success:false,error:'not_allowed',message:'Sticker photo is required.'};
+    }
+    if (body.apartment != null || body.warehouseNote != null || body.itemDescription != null) {
+      return {ok:false,success:false,error:'not_allowed',message:'Mobile guard can only add the sticker photo.'};
+    }
+    sheet.getRange(found.rowIdx, 21).setValue(sticker);
+    sheet.getRange(found.rowIdx, 20).setValue(now);
+    return {ok:true,success:true,id:id};
+  }
   if (body.apartment != null) sheet.getRange(found.rowIdx, 9).setValue(String(body.apartment || '').trim());
   if (body.warehouseNote != null) sheet.getRange(found.rowIdx, 11).setValue(String(body.warehouseNote || '').trim());
   if (body.itemDescription != null) sheet.getRange(found.rowIdx, 7).setValue(String(body.itemDescription || '').trim());
+  if (body.photo2 != null) sheet.getRange(found.rowIdx, 21).setValue(String(body.photo2 || '').trim());
   sheet.getRange(found.rowIdx, 20).setValue(now);
   return {ok:true,success:true,id:id};
 }

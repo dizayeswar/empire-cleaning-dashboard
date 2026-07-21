@@ -80,7 +80,6 @@
         const CLEANING_SECTIONS = [
             { icon:'🧹', name:'Cleaning', desc:'Daily reports, task checklists & monthly report.', link:'cleaning-dashboard.html', accessDept:'cleaning' },
             { icon:'🧱', name:'Civil Issue', desc:'Building issues found during cleaning rounds — log photos & track repairs.', link:'civil-issue.html', accessDept:'civil issue' },
-            { icon:'⚡', name:'Electric Issues', desc:'Supervisor issue tracker — now inside Electrical Department.', link:'electrical.html', accessDept:'electric issue' },
             { icon:'🧯', name:'Fire Fighting & Mechanical', desc:'Fire safety systems & mechanical equipment — inspections and maintenance.', link:'fire-issue.html', accessDept:'fire' }
         ];
 
@@ -191,7 +190,7 @@
             if (e.key === 'Escape') closeUserMenu();
         });
 
-        var CLEANING_CHILD_DEPTS = ['cleaning', 'civil issue', 'electric issue', 'fire'];
+        var CLEANING_CHILD_DEPTS = ['cleaning', 'civil issue', 'fire'];
 
         function canSeeHubTile(accessDept) {
             if (empireIsAdminSession()) return true;

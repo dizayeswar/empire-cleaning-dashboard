@@ -23,7 +23,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-22-application-v2';
+var SCRIPT_VERSION = '2026-07-22-application-v3';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -4483,7 +4483,7 @@ function handleUpdateApplicationCheck(body, auth) {
   var note = body.note != null ? String(body.note || '').trim() : String(rows[rowIdx - 1][5] || '');
   var now = new Date().toISOString();
   var user = String((auth && auth.username) || body.username || '');
-  sheet.getRange(rowIdx, 4, rowIdx, 8).setValues([[phone, status, note, now, user]]);
+  sheet.getRange(rowIdx, 4, 1, 5).setValues([[phone, status, note, now, user]]);
   return {
     ok: true,
     success: true,
@@ -4506,7 +4506,7 @@ function handleImportApplicationChecks(body, auth) {
   var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET) || ss.insertSheet(APPLICATION_CHECKS_SHEET);
   ensureApplicationChecksSheet_(sheet);
   var lastRow = sheet.getLastRow();
-  var indexRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow, 1).getValues() : [];
+  var indexRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues() : [];
   var index = {};
   for (var i = 0; i < indexRows.length; i++) index[String(indexRows[i][0])] = i + 2;
   var inserted = 0;
@@ -4525,7 +4525,7 @@ function handleImportApplicationChecks(body, auth) {
     var status = normalizeApplicationStatus_(it.status);
     var note = String(it.note || '').trim();
     if (index[id]) {
-      sheet.getRange(index[id], 2, index[id], 8).setValues([[project, propertyId, phone, status, note, now, user]]);
+      sheet.getRange(index[id], 2, 1, 7).setValues([[project, propertyId, phone, status, note, now, user]]);
       updated++;
     } else {
       newRows.push([id, project, propertyId, phone, status, note, now, user]);
@@ -4534,7 +4534,7 @@ function handleImportApplicationChecks(body, auth) {
   }
   if (newRows.length) {
     var startRow = sheet.getLastRow() + 1;
-    sheet.getRange(startRow, 1, startRow + newRows.length - 1, 8).setValues(newRows);
+    sheet.getRange(startRow, 1, newRows.length, 8).setValues(newRows);
     inserted = newRows.length;
   }
   return {ok:true,success:true,inserted:inserted,updated:updated,skipped:skipped,processed:items.length};

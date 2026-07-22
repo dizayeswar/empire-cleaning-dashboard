@@ -221,7 +221,8 @@ var EMPIRE_DEPT_HOME = {
   hse: 'hse-inspection.html',
   'civil department': 'civil-department.html',
   'electrical department': 'electrical.html',
-  asaas: 'asaas.html'
+  asaas: 'asaas.html',
+  application: 'application.html'
 };
 
 var EMPIRE_LOGIN_PAGE = 'index.html';

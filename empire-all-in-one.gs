@@ -14,6 +14,7 @@ var ELECTRICAL_JOBS_SHEET = 'ElectricalJobs';
 var ELECTRICAL_SUMMARY_SHEET = 'ElectricalSummary';
 var ELECTRIC_WORKER_REPORTS_SHEET = 'ElectricWorkerReports';
 var ASAAS_SHEET = 'AsaasItems';
+var APPLICATION_CHECKS_SHEET = 'ApplicationChecks';
 var CIVIL_JOBS_SHEET = 'CivilJobs';
 var CIVIL_SUMMARY_SHEET = 'CivilSummary';
 var TRASH_SHEET = 'Trash';
@@ -22,7 +23,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-22-mobile-logout-pw';
+var SCRIPT_VERSION = '2026-07-22-application-v1';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -386,7 +387,8 @@ function doPost(e) {
       'deleteCivilJob':'civil department','clearCivilJobs':'civil department',
       'getCivilSummary':'civil department','saveCivilSummary':'civil department',
       'getAsaasItems':'asaas','addAsaasItem':'asaas','updateAsaasItem':'asaas','markAsaasReturned':'asaas',
-      'deleteAsaasItem':'asaas','clearAsaasItems':'asaas'
+      'deleteAsaasItem':'asaas','clearAsaasItems':'asaas',
+      'getApplicationChecks':'application','updateApplicationCheck':'application','importApplicationChecks':'application'
     };
     var trashActions = {getTrash:1, restoreTrash:1, purgeTrash:1, getUiSettings:1, saveUiSettings:1};
     var requiredDept = trashActions[action] ? body.dept : deptByAction[action];
@@ -509,6 +511,9 @@ function doPost(e) {
     if (action==='markAsaasReturned') return respond(handleMarkAsaasReturned(body, auth));
     if (action==='deleteAsaasItem') return respond(handleDeleteAsaasItem(body, auth));
     if (action==='clearAsaasItems') return respond(handleClearAsaasItems(body));
+    if (action==='getApplicationChecks') return respond(handleGetApplicationChecks(body, auth));
+    if (action==='updateApplicationCheck') return respond(handleUpdateApplicationCheck(body, auth));
+    if (action==='importApplicationChecks') return respond(handleImportApplicationChecks(body, auth));
     if (action==='getTrash') return respond(handleGetTrash(body));
     if (action==='restoreTrash') return respond(handleRestoreTrash(body));
     if (action==='purgeTrash') return respond(handlePurgeTrash(body));
@@ -1346,6 +1351,7 @@ function handleGetSummary(body) {
   if (summaryAllowedForToken_(sess.dept, 'hse')) summary.hse = buildIssueHubSummary_(HSE_SHEET);
   if (summaryAllowedForToken_(sess.dept, 'electrical department')) summary['electrical department'] = buildJobsHubSummary_(ELECTRICAL_JOBS_SHEET);
   if (summaryAllowedForToken_(sess.dept, 'asaas')) summary.asaas = buildAsaasHubSummary_();
+  if (summaryAllowedForToken_(sess.dept, 'application')) summary.application = buildApplicationHubSummary_();
   var out = {ok:true, summary:summary, generatedAt:new Date().toISOString()};
   try { cache.put(cacheKey, JSON.stringify(out), 120); } catch(e){}
   return out;
@@ -4379,4 +4385,158 @@ function handleClearAsaasItems(body) {
   var lastRow = sheet.getLastRow();
   if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
   return {ok:true,success:true,deleted:lastRow - 1};
+}
+
+function applicationCheckId_(project, propertyId) {
+  return String(project || '').trim().toUpperCase() + '|' + String(propertyId || '').trim().toUpperCase();
+}
+
+function normalizeApplicationStatus_(raw) {
+  var s = String(raw || '').trim().toUpperCase();
+  if (!s) return '';
+  s = s.replace(/\s+/g, ' ');
+  if (s === 'EMPTY') return '';
+  return s;
+}
+
+function ensureApplicationChecksSheet_(sheet) {
+  if (!sheet) return;
+  var headers = ['id', 'project', 'propertyId', 'phone', 'status', 'note', 'updatedAt', 'updatedBy'];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    return;
+  }
+  for (var c = 0; c < headers.length; c++) {
+    if (String(sheet.getRange(1, c + 1).getValue() || '') !== headers[c]) {
+      sheet.getRange(1, c + 1).setValue(headers[c]);
+    }
+  }
+}
+
+function applicationCheckRowToObj_(row) {
+  return {
+    id: String(row[0] || ''),
+    project: String(row[1] || ''),
+    propertyId: String(row[2] || ''),
+    phone: String(row[3] || ''),
+    status: String(row[4] || ''),
+    note: String(row[5] || ''),
+    updatedAt: dtIssue_(row[6]),
+    updatedBy: String(row[7] || '')
+  };
+}
+
+function handleGetApplicationChecks(body, auth) {
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  ensureApplicationChecksSheet_(sheet);
+  var projectFilter = String(body.project || '').trim().toUpperCase();
+  var rows = sheet.getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    var item = applicationCheckRowToObj_(rows[i]);
+    if (projectFilter && String(item.project || '').toUpperCase() !== projectFilter) continue;
+    out.push(item);
+  }
+  out.sort(function (a, b) {
+    return String(a.propertyId || '').localeCompare(String(b.propertyId || ''));
+  });
+  return out;
+}
+
+function handleUpdateApplicationCheck(body, auth) {
+  var id = String(body.id || '').trim();
+  var project = String(body.project || '').trim().toUpperCase();
+  var propertyId = String(body.propertyId || '').trim().toUpperCase();
+  if (!id && project && propertyId) id = applicationCheckId_(project, propertyId);
+  if (!id) return {ok:false,success:false,error:'missing_id',message:'Record id is required.'};
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return {ok:false,success:false,error:'not_found',message:'Record not found.'};
+  ensureApplicationChecksSheet_(sheet);
+  var rows = sheet.getDataRange().getValues();
+  var rowIdx = -1;
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === id) { rowIdx = i + 1; break; }
+  }
+  if (rowIdx < 0) return {ok:false,success:false,error:'not_found',message:'Record not found.'};
+  var phone = body.phone != null ? String(body.phone || '').replace(/\D/g, '') : String(rows[rowIdx - 1][3] || '');
+  var status = body.status != null ? normalizeApplicationStatus_(body.status) : String(rows[rowIdx - 1][4] || '');
+  var note = body.note != null ? String(body.note || '').trim() : String(rows[rowIdx - 1][5] || '');
+  var now = new Date().toISOString();
+  var user = String((auth && auth.username) || body.username || '');
+  sheet.getRange(rowIdx, 4, rowIdx, 8).setValues([[phone, status, note, now, user]]);
+  return {
+    ok: true,
+    success: true,
+    id: id,
+    phone: phone,
+    status: status,
+    note: note,
+    updatedAt: now,
+    updatedBy: user
+  };
+}
+
+function handleImportApplicationChecks(body, auth) {
+  if (String(auth.role || '').toLowerCase() !== 'admin') {
+    return {ok:false,success:false,error:'not_allowed',message:'Only an admin can import application data.'};
+  }
+  var items = body.items || [];
+  if (!items.length) return {ok:false,success:false,error:'empty',message:'No records to import.'};
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET) || ss.insertSheet(APPLICATION_CHECKS_SHEET);
+  ensureApplicationChecksSheet_(sheet);
+  var rows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues() : [];
+  var index = {};
+  for (var i = 0; i < rows.length; i++) index[String(rows[i][0])] = i + 2;
+  var inserted = 0;
+  var updated = 0;
+  var now = new Date().toISOString();
+  var user = String((auth && auth.username) || body.username || 'import');
+  for (var j = 0; j < items.length; j++) {
+    var it = items[j] || {};
+    var project = String(it.project || '').trim().toUpperCase();
+    var propertyId = String(it.propertyId || '').trim().toUpperCase();
+    if (!project || !propertyId) continue;
+    var id = applicationCheckId_(project, propertyId);
+    var phone = String(it.phone || '').replace(/\D/g, '');
+    var status = normalizeApplicationStatus_(it.status);
+    var note = String(it.note || '').trim();
+    if (index[id]) {
+      sheet.getRange(index[id], 2, index[id], 8).setValues([[project, propertyId, phone, status, note, now, user]]);
+      updated++;
+    } else {
+      sheet.appendRow([id, project, propertyId, phone, status, note, now, user]);
+      index[id] = sheet.getLastRow();
+      inserted++;
+    }
+  }
+  return {ok:true,success:true,inserted:inserted,updated:updated,processed:items.length};
+}
+
+function buildApplicationHubSummary_() {
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return {open:0,label:'No door checks loaded yet',level:'muted',lastActivity:''};
+  }
+  var rows = sheet.getDataRange().getValues();
+  var pending = 0;
+  var active = 0;
+  var lastAt = '';
+  for (var i = 1; i < rows.length; i++) {
+    var st = normalizeApplicationStatus_(rows[i][4]);
+    if (!st || st.indexOf('CHECK') !== -1 || st.indexOf('TRY') !== -1 || st.indexOf('COME BACK') !== -1 || st === 'PENDING') pending++;
+    if (st.indexOf('ACTIVE') !== -1) active++;
+    var ua = dtIssue_(rows[i][6]);
+    if (ua && (!lastAt || ua > lastAt)) lastAt = ua;
+  }
+  return {
+    open: pending,
+    label: active + ' active · ' + pending + ' need follow-up',
+    level: pending > 0 ? 'warn' : 'ok',
+    lastActivity: lastAt
+  };
 }

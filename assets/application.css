@@ -1,0 +1,90 @@
+.app-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.app-summary-card {
+  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.app-summary-card strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--accent2);
+}
+.app-summary-card span {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.app-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  max-height: calc(100vh - 320px);
+}
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.app-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--accent2);
+  color: #fff;
+  text-align: left;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.app-table td {
+  border-top: 1px solid var(--card-border);
+  padding: 6px 10px;
+  vertical-align: middle;
+}
+.app-table tr:nth-child(even) td {
+  background: var(--row-hover, rgba(0,0,0,.02));
+}
+.app-table input[type="text"],
+.app-table select {
+  width: 100%;
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+}
+.app-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.app-status-active { background: #d4edda; color: #155724; }
+.app-status-pending { background: #fff3cd; color: #856404; }
+.app-status-follow { background: #ffe8cc; color: #9a5200; }
+.app-status-refused { background: #f8d7da; color: #721c24; }
+.app-status-empty { background: #eef1f6; color: #666; }
+.app-import-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--card-border);
+  background: var(--task-bg, #f7f9fc);
+}
+.app-import-msg {
+  font-size: 13px;
+  color: var(--text-soft);
+}

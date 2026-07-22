@@ -2,16 +2,14 @@
 function asaasDownloadExcel() {
   var rows = (typeof _asaasItems !== 'undefined' ? _asaasItems : []).slice();
   if (!rows.length) { alert('No items to export.'); return; }
-  var aoa = [['Reference','Date','Building','Floor','Spot','Item','Apartment','Status','Warehouse note','Logged by','Days in warehouse','Returned to','Return apartment','Returned at']];
+  var aoa = [['Reference','Date','Location','Spot','Item','Status','Warehouse note','Logged by','Days in warehouse','Returned to','Return apartment','Returned at']];
   rows.forEach(function (r) {
     aoa.push([
       asaasRef_(r.num),
       r.date || '',
-      r.building || '',
-      r.floor || '',
+      asaasLocStr_(r),
       r.spot || '',
       r.itemDescription || '',
-      r.apartment || '',
       r.status === 'returned' ? 'Returned' : 'In warehouse',
       r.warehouseNote || '',
       r.removedByName || r.removedBy || '',
@@ -45,9 +43,9 @@ function asaasDownloadReport() {
     return list.map(function (r) {
       return '<div style="border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;gap:12px;">'
         + (r.photo ? ('<img src="' + r.photo + '" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">') : '')
-        + '<div><strong>' + asaasRef_(r.num) + '</strong> — ' + (r.itemDescription || '') + '<br>'
-        + asaasLocStr_(r) + '<br>Status: ' + (r.status === 'returned' ? 'Returned' : 'In warehouse')
-        + (r.apartment ? (' · Apt ' + r.apartment) : '') + '</div></div>';
+        + '<div><strong>Ref:</strong> ' + asaasRef_(r.num) + '<br><strong>Location:</strong> ' + asaasLocStr_(r)
+        + '<br><strong>Description:</strong> ' + (r.itemDescription || '')
+        + '<br>Status: ' + (r.status === 'returned' ? 'Returned' : 'In warehouse') + '</div></div>';
     }).join('') || '<p>No items.</p>';
   };
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>A.S.A.A.S Report</title></head><body style="font-family:Segoe UI,sans-serif;padding:24px;max-width:900px;margin:0 auto;">'

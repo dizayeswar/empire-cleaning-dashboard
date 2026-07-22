@@ -24,8 +24,11 @@
 .asaas-card-body { padding: 12px 14px; }
 .asaas-card-ref { font-weight: 800; font-size: 16px; }
 .asaas-card-status { font-size: 12px; font-weight: 700; color: var(--text-soft); margin: 4px 0; }
-.asaas-card-loc { font-size: 13px; color: var(--text-soft); }
+.asaas-card-loc { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
 .asaas-card-item { font-size: 14px; font-weight: 600; margin-top: 6px; }
+.asaas-item-summary { margin-bottom: 12px; }
+.asaas-item-summary-line { margin: 0 0 6px; font-size: 14px; line-height: 1.45; }
+.asaas-item-summary-label { color: var(--text-soft); font-weight: 600; }
 .asaas-card-apt { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
 .asaas-card-days { font-size: 12px; color: #d68910; margin-top: 6px; font-weight: 600; }
 .asaas-return-head { font-size: 15px; margin-bottom: 10px; }

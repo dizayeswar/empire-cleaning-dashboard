@@ -231,15 +231,30 @@
   display: none;
   flex-direction: column;
   gap: 4px;
-  padding: 6px;
+  padding: 6px 8px 6px 6px;
   background: var(--input-bg, #fff);
   border: 2px solid var(--input-border);
   border-radius: var(--radius-sm);
   box-shadow: 0 10px 30px var(--shadow, rgba(0, 0, 0, 0.2));
-  max-height: 280px;
-  overflow: auto;
+  max-height: min(280px, calc(100vh - 16px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
-.app-status-dd.open .app-status-dd-menu {
+.app-status-dd-menu-portal {
+  display: flex !important;
+}
+.app-status-dd-menu::-webkit-scrollbar {
+  width: 8px;
+}
+.app-status-dd-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.app-status-dd.open .app-status-dd-menu:not(.app-status-dd-menu-portal) {
   display: flex;
 }
 .app-status-dd-opt {

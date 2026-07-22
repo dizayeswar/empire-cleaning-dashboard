@@ -269,17 +269,47 @@ function appStatusSelectHtml_(id, value) {
   return h;
 }
 
+function appStatusDdPosition_(btn, menu) {
+  if (!btn || !menu) return;
+  var r = btn.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.left = r.left + 'px';
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.style.width = Math.max(r.width, 210) + 'px';
+  menu.style.zIndex = '10000';
+  menu.style.display = 'flex';
+  var mh = menu.offsetHeight || 280;
+  if (r.bottom + 4 + mh > window.innerHeight - 8) {
+    menu.style.top = Math.max(8, r.top - mh - 4) + 'px';
+  }
+}
+
+function appStatusDdBindMenu_(menu) {
+  if (!menu || menu._appStatusDdBound) return;
+  menu._appStatusDdBound = true;
+  menu.addEventListener('wheel', function (e) { e.stopPropagation(); }, { passive: true });
+  menu.addEventListener('touchmove', function (e) { e.stopPropagation(); }, { passive: true });
+  menu.addEventListener('click', function (e) { e.stopPropagation(); });
+}
+
 function appStatusDdCloseAll_() {
+  document.querySelectorAll('.app-status-dd-menu-portal').forEach(function (menu) {
+    var wrap = menu._appStatusDdWrap;
+    menu.classList.remove('app-status-dd-menu-portal');
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.top = '';
+    menu.style.width = '';
+    menu.style.zIndex = '';
+    menu.style.display = '';
+    menu._appStatusDdWrap = null;
+    if (wrap) {
+      wrap.classList.remove('open');
+      wrap.appendChild(menu);
+    }
+  });
   document.querySelectorAll('.app-status-dd.open').forEach(function (el) {
     el.classList.remove('open');
-    var menu = el.querySelector('.app-status-dd-menu');
-    if (menu) {
-      menu.style.position = '';
-      menu.style.left = '';
-      menu.style.top = '';
-      menu.style.width = '';
-      menu.style.zIndex = '';
-    }
   });
 }
 
@@ -292,17 +322,24 @@ function appStatusDdToggle_(ev, btn) {
   appStatusDdCloseAll_();
   if (wasOpen || !menu) return;
   wrap.classList.add('open');
-  var r = btn.getBoundingClientRect();
-  menu.style.position = 'fixed';
-  menu.style.left = r.left + 'px';
-  menu.style.top = (r.bottom + 4) + 'px';
-  menu.style.width = Math.max(r.width, 210) + 'px';
-  menu.style.zIndex = '10000';
+  appStatusDdBindMenu_(menu);
+  document.body.appendChild(menu);
+  menu.classList.add('app-status-dd-menu-portal');
+  menu._appStatusDdWrap = wrap;
+  appStatusDdPosition_(btn, menu);
+}
+
+function appStatusDdOnOuterScroll_(ev) {
+  var menu = document.querySelector('.app-status-dd-menu-portal');
+  if (!menu) return;
+  if (ev.target && (menu === ev.target || menu.contains(ev.target))) return;
+  appStatusDdCloseAll_();
 }
 
 function appStatusDdPick_(ev, optBtn) {
   if (ev) ev.stopPropagation();
-  var wrap = optBtn.closest('.app-status-dd');
+  var menu = optBtn.closest('.app-status-dd-menu');
+  var wrap = (menu && menu._appStatusDdWrap) || optBtn.closest('.app-status-dd');
   if (!wrap) return;
   var value = optBtn.getAttribute('data-value') || '';
   var hidden = wrap.querySelector('[data-app-field="status"]');
@@ -592,7 +629,7 @@ function appInit_() {
   if (!document.body._appStatusDdBound) {
     document.body._appStatusDdBound = true;
     document.addEventListener('click', appStatusDdCloseAll_);
-    window.addEventListener('scroll', appStatusDdCloseAll_, true);
+    document.addEventListener('scroll', appStatusDdOnOuterScroll_, true);
     window.addEventListener('resize', appStatusDdCloseAll_);
   }
   if (!empireAuthPageBoot({

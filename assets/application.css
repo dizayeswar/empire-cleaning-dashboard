@@ -88,3 +88,33 @@
   font-size: 13px;
   color: var(--text-soft);
 }
+.app-counts-bar {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--panel);
+}
+.app-counts-bar strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.app-count-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.app-count-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+.app-count-chip.app-count-warn {
+  background: #fff3cd;
+  color: #856404;
+}

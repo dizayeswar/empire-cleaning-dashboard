@@ -23,7 +23,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-22-application-v1';
+var SCRIPT_VERSION = '2026-07-22-application-v2';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -388,7 +388,7 @@ function doPost(e) {
       'getCivilSummary':'civil department','saveCivilSummary':'civil department',
       'getAsaasItems':'asaas','addAsaasItem':'asaas','updateAsaasItem':'asaas','markAsaasReturned':'asaas',
       'deleteAsaasItem':'asaas','clearAsaasItems':'asaas',
-      'getApplicationChecks':'application','updateApplicationCheck':'application','importApplicationChecks':'application'
+      'getApplicationChecks':'application','getApplicationCheckMeta':'application','updateApplicationCheck':'application','importApplicationChecks':'application'
     };
     var trashActions = {getTrash:1, restoreTrash:1, purgeTrash:1, getUiSettings:1, saveUiSettings:1};
     var requiredDept = trashActions[action] ? body.dept : deptByAction[action];
@@ -512,6 +512,7 @@ function doPost(e) {
     if (action==='deleteAsaasItem') return respond(handleDeleteAsaasItem(body, auth));
     if (action==='clearAsaasItems') return respond(handleClearAsaasItems(body));
     if (action==='getApplicationChecks') return respond(handleGetApplicationChecks(body, auth));
+    if (action==='getApplicationCheckMeta') return respond(handleGetApplicationCheckMeta(body, auth));
     if (action==='updateApplicationCheck') return respond(handleUpdateApplicationCheck(body, auth));
     if (action==='importApplicationChecks') return respond(handleImportApplicationChecks(body, auth));
     if (action==='getTrash') return respond(handleGetTrash(body));
@@ -4426,6 +4427,22 @@ function applicationCheckRowToObj_(row) {
   };
 }
 
+function handleGetApplicationCheckMeta(body, auth) {
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return {ok:true,total:0,byProject:{}};
+  var rows = sheet.getDataRange().getValues();
+  var byProject = {};
+  for (var i = 1; i < rows.length; i++) {
+    var p = String(rows[i][1] || '').trim().toUpperCase();
+    if (!p) continue;
+    byProject[p] = (byProject[p] || 0) + 1;
+  }
+  var total = 0;
+  for (var k in byProject) total += byProject[k];
+  return {ok:true,total:total,byProject:byProject};
+}
+
 function handleGetApplicationChecks(body, auth) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
@@ -4488,18 +4505,21 @@ function handleImportApplicationChecks(body, auth) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET) || ss.insertSheet(APPLICATION_CHECKS_SHEET);
   ensureApplicationChecksSheet_(sheet);
-  var rows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues() : [];
+  var lastRow = sheet.getLastRow();
+  var indexRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow, 1).getValues() : [];
   var index = {};
-  for (var i = 0; i < rows.length; i++) index[String(rows[i][0])] = i + 2;
+  for (var i = 0; i < indexRows.length; i++) index[String(indexRows[i][0])] = i + 2;
   var inserted = 0;
   var updated = 0;
+  var skipped = 0;
   var now = new Date().toISOString();
   var user = String((auth && auth.username) || body.username || 'import');
+  var newRows = [];
   for (var j = 0; j < items.length; j++) {
     var it = items[j] || {};
     var project = String(it.project || '').trim().toUpperCase();
     var propertyId = String(it.propertyId || '').trim().toUpperCase();
-    if (!project || !propertyId) continue;
+    if (!project || !propertyId) { skipped++; continue; }
     var id = applicationCheckId_(project, propertyId);
     var phone = String(it.phone || '').replace(/\D/g, '');
     var status = normalizeApplicationStatus_(it.status);
@@ -4508,12 +4528,16 @@ function handleImportApplicationChecks(body, auth) {
       sheet.getRange(index[id], 2, index[id], 8).setValues([[project, propertyId, phone, status, note, now, user]]);
       updated++;
     } else {
-      sheet.appendRow([id, project, propertyId, phone, status, note, now, user]);
-      index[id] = sheet.getLastRow();
-      inserted++;
+      newRows.push([id, project, propertyId, phone, status, note, now, user]);
+      index[id] = lastRow + newRows.length + 1;
     }
   }
-  return {ok:true,success:true,inserted:inserted,updated:updated,processed:items.length};
+  if (newRows.length) {
+    var startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, startRow + newRows.length - 1, 8).setValues(newRows);
+    inserted = newRows.length;
+  }
+  return {ok:true,success:true,inserted:inserted,updated:updated,skipped:skipped,processed:items.length};
 }
 
 function buildApplicationHubSummary_() {

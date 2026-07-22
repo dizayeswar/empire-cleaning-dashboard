@@ -13,8 +13,12 @@ var APP_STATUS_OPTIONS = [
   'COME BACK LATER',
   'HE DOESN\'T WANT THE APP'
 ];
+var APP_SEED_URL = 'assets/application-seed.json?v=2026-07-22-application-v3';
 var _appRows = [];
 var _appSaving = {};
+var _appExpectedTotal = 0;
+var _appExpectedByProject = {};
+var _appSeedItems = null;
 
 function appToken_() { return empireGetToken() || ''; }
 function appEsc_(s) {
@@ -28,6 +32,16 @@ function appStatusClass_(status) {
   if (s === 'PENDING') return 'app-status-pending';
   if (s.indexOf('WANT') !== -1) return 'app-status-refused';
   return 'app-status-follow';
+}
+
+function appCountByProject_(rows) {
+  var out = {};
+  rows.forEach(function (r) {
+    var p = String(r.project || '').toUpperCase();
+    if (!p) return;
+    out[p] = (out[p] || 0) + 1;
+  });
+  return out;
 }
 
 function appFilteredRows_() {
@@ -71,6 +85,23 @@ function appStatusSelectHtml_(id, value) {
   return h;
 }
 
+function appCountsHtml_() {
+  var loaded = appCountByProject_(_appRows);
+  var parts = APP_PROJECTS.map(function (p) {
+    var have = loaded[p] || 0;
+    var want = _appExpectedByProject[p] || 0;
+    var cls = want && have < want ? ' app-count-warn' : '';
+    return '<span class="app-count-chip' + cls + '">' + p + ': ' + have + (want ? (' / ' + want) : '') + '</span>';
+  });
+  var total = _appRows.length;
+  var expected = _appExpectedTotal || 0;
+  var head = '<div class="app-counts-bar">';
+  head += '<strong>' + total + (expected ? (' / ' + expected) : '') + ' apartments loaded</strong>';
+  head += '<div class="app-count-chips">' + parts.join('') + '</div>';
+  head += '</div>';
+  return head;
+}
+
 function appRenderTable_() {
   var host = document.getElementById('appTableHost');
   var summary = document.getElementById('appSummaryHost');
@@ -78,10 +109,11 @@ function appRenderTable_() {
   var rows = appFilteredRows_();
   if (summary) summary.innerHTML = appSummaryHtml_(rows);
   if (!rows.length) {
-    host.innerHTML = '<p class="worker-empty">No properties match your filters.</p>';
+    host.innerHTML = appCountsHtml_() + '<p class="worker-empty">No properties match your filters.</p>';
     return;
   }
-  var h = '<div class="app-table-wrap"><table class="app-table"><thead><tr>'
+  var h = appCountsHtml_();
+  h += '<div class="app-table-wrap"><table class="app-table"><thead><tr>'
     + '<th>Property</th><th>Project</th><th>Phone</th><th>Account status</th><th>Updated</th>'
     + '</tr></thead><tbody>';
   rows.forEach(function (r) {
@@ -135,7 +167,7 @@ function appSaveRow_(id) {
 
 function appPopulateFilters_() {
   var proj = document.getElementById('appFilterProject');
-  if (proj && !proj.options.length) {
+  if (proj && proj.options.length <= 1) {
     proj.innerHTML = '<option value="">All projects</option>'
       + APP_PROJECTS.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
   }
@@ -150,25 +182,88 @@ function appPopulateFilters_() {
   }
 }
 
+function appFetchProjectRows_(project, force) {
+  return fetchJSONRetry({
+    action: 'getApplicationChecks',
+    token: appToken_(),
+    project: project
+  }, force ? 2 : 1, 120000).then(function (d) {
+    return Array.isArray(d) ? d : [];
+  });
+}
+
 function appLoad_(force) {
   var host = document.getElementById('appTableHost');
-  if (host) host.innerHTML = '<p>Loading…</p>';
-  return fetchJSONRetry({ action: 'getApplicationChecks', token: appToken_() }, force ? 2 : 1, 120000)
-    .then(function (d) {
-      _appRows = Array.isArray(d) ? d : [];
-      appToggleImportBar_();
-      appRenderTable_();
-    })
-    .catch(function (e) {
-      if (host) host.innerHTML = '<p class="worker-empty">Could not load data. ' + appEsc_((e && e.message) || e) + '</p>';
+  if (host) host.innerHTML = '<p>Loading all projects (RA, WW, WD, ES)…</p>';
+  return Promise.all(APP_PROJECTS.map(function (p) {
+    return appFetchProjectRows_(p, force);
+  })).then(function (parts) {
+    _appRows = [];
+    parts.forEach(function (rows) {
+      _appRows = _appRows.concat(rows);
     });
+    _appRows.sort(function (a, b) {
+      return String(a.propertyId || '').localeCompare(String(b.propertyId || ''));
+    });
+    appToggleImportBar_();
+    appRenderTable_();
+  }).catch(function (e) {
+    if (host) host.innerHTML = '<p class="worker-empty">Could not load data. ' + appEsc_((e && e.message) || e) + '</p>';
+  });
+}
+
+function appSeedMetaFromItems_(items) {
+  _appExpectedTotal = items.length;
+  _appExpectedByProject = {};
+  items.forEach(function (it) {
+    var p = String(it.project || '').toUpperCase();
+    if (!p) return;
+    _appExpectedByProject[p] = (_appExpectedByProject[p] || 0) + 1;
+  });
+}
+
+function appEnsureSeedMeta_() {
+  if (_appSeedItems && _appSeedItems.length) {
+    appSeedMetaFromItems_(_appSeedItems);
+    return Promise.resolve(_appSeedItems);
+  }
+  return fetch(APP_SEED_URL).then(function (r) { return r.json(); }).then(function (items) {
+    if (!Array.isArray(items)) throw new Error('Seed file invalid');
+    _appSeedItems = items;
+    appSeedMetaFromItems_(items);
+    return items;
+  });
 }
 
 function appToggleImportBar_() {
   var bar = document.getElementById('appImportBar');
   if (!bar) return;
   var isAdmin = String(empireGetRole() || '').toLowerCase() === 'admin';
-  bar.style.display = (isAdmin && !_appRows.length) ? 'flex' : 'none';
+  if (!isAdmin) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  var msg = document.getElementById('appImportMsg');
+  var btn = document.getElementById('appImportBtn');
+  if (!msg) return;
+  var expected = _appExpectedTotal || 4199;
+  var loaded = _appRows.length;
+  if (loaded >= expected) {
+    msg.textContent = 'All ' + expected + ' apartments loaded. Click sync to refresh from Excel seed.';
+    if (btn) btn.textContent = 'Re-sync from Excel';
+  } else {
+    msg.textContent = loaded + ' / ' + expected + ' apartments loaded — sync to load all RA, WW, WD, ES sheets.';
+    if (btn) btn.textContent = 'Sync all apartments from Excel';
+  }
+}
+
+function appImportBatch_(slice, tries) {
+  return fetchJSONRetry({ action: 'importApplicationChecks', token: appToken_(), items: slice }, tries || 3, 180000)
+    .then(function (d) {
+      if (d && (d.ok || d.success)) return d;
+      throw new Error((d && (d.message || d.error)) || 'Import failed');
+    });
 }
 
 function appImportSeed_() {
@@ -176,36 +271,42 @@ function appImportSeed_() {
   var btn = document.getElementById('appImportBtn');
   if (btn) btn.disabled = true;
   if (msg) msg.textContent = 'Loading seed file…';
-  fetch('assets/application-seed.json?v=2026-07-22-application-v1')
-    .then(function (r) { return r.json(); })
+  appEnsureSeedMeta_()
     .then(function (items) {
-      if (!Array.isArray(items) || !items.length) throw new Error('Seed file is empty');
-      var chunk = 250;
+      if (!items.length) throw new Error('Seed file is empty');
+      var chunk = 150;
       var i = 0;
       var inserted = 0;
       var updated = 0;
       function nextBatch() {
         var slice = items.slice(i, i + chunk);
         if (!slice.length) {
-          if (msg) msg.textContent = 'Import complete — ' + inserted + ' new, ' + updated + ' updated.';
-          return appLoad_(true);
-        }
-        if (msg) msg.textContent = 'Importing ' + Math.min(i + chunk, items.length) + ' / ' + items.length + '…';
-        return fetchJSONRetry({ action: 'importApplicationChecks', token: appToken_(), items: slice }, 2, 120000)
-          .then(function (d) {
-            if (d && (d.ok || d.success)) {
-              inserted += Number(d.inserted || 0);
-              updated += Number(d.updated || 0);
-              i += chunk;
-              return nextBatch();
-            }
-            throw new Error((d && (d.message || d.error)) || 'Import failed');
+          if (msg) msg.textContent = 'Import complete — ' + inserted + ' new, ' + updated + ' updated. Reloading…';
+          return appLoad_(true).then(function () {
+            if (msg) msg.textContent = 'Sync complete — ' + _appRows.length + ' / ' + _appExpectedTotal + ' apartments loaded.';
+            if (btn) btn.disabled = false;
           });
+        }
+        if (msg) msg.textContent = 'Syncing ' + Math.min(i + chunk, items.length) + ' / ' + items.length + ' apartments…';
+        return appImportBatch_(slice, 3).then(function (d) {
+          inserted += Number(d.inserted || 0);
+          updated += Number(d.updated || 0);
+          i += chunk;
+          return nextBatch();
+        }).catch(function (err) {
+          if (msg) msg.textContent = 'Retrying batch at ' + (i + 1) + '… (' + String((err && err.message) || err) + ')';
+          return appImportBatch_(slice, 2).then(function (d) {
+            inserted += Number(d.inserted || 0);
+            updated += Number(d.updated || 0);
+            i += chunk;
+            return nextBatch();
+          });
+        });
       }
       return nextBatch();
     })
     .catch(function (e) {
-      if (msg) msg.textContent = 'Import failed: ' + String((e && e.message) || e);
+      if (msg) msg.textContent = 'Sync failed: ' + String((e && e.message) || e);
       if (btn) btn.disabled = false;
     });
 }
@@ -219,6 +320,9 @@ function appEnterApp_() {
   var who = document.getElementById('whoLabel');
   if (who) who.textContent = 'Logged in as: ' + (empireGetUser() || '');
   appPopulateFilters_();
+  appEnsureSeedMeta_().finally(function () {
+    appToggleImportBar_();
+  });
   appLoad_(true);
 }
 

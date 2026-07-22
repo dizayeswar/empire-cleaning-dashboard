@@ -6,11 +6,9 @@ var APP_STATUS_OPTIONS = [
   '',
   'ACTIVE',
   'NEW ACTIVE',
-  'NEW ACTIVE REMOVED OLD',
   'PENDING',
   'CHECK AGAIN',
   'TRY TO REACH',
-  'COME BACK LATER',
   'HE DOESN\'T WANT THE APP'
 ];
 var APP_SEED_URL = 'assets/application-seed.json?v=2026-07-22-application-v4';
@@ -122,12 +120,10 @@ function appSummaryStatusOrder_(a, b, counts) {
   var order = {
     'ACTIVE': 1,
     'NEW ACTIVE': 2,
-    'NEW ACTIVE REMOVED OLD': 3,
-    'PENDING': 4,
-    'CHECK AGAIN': 5,
-    'TRY TO REACH': 6,
-    'COME BACK LATER': 7,
-    'HE DOESN\'T WANT THE APP': 8,
+    'PENDING': 3,
+    'CHECK AGAIN': 4,
+    'TRY TO REACH': 5,
+    'HE DOESN\'T WANT THE APP': 6,
     'Not visited': 9
   };
   var oa = order[a] || 50;
@@ -168,7 +164,7 @@ function appMiniDonutHtml_(label, rows) {
   var total = rows.length;
   var active = (counts.ACTIVE || 0) + (counts['NEW ACTIVE'] || 0) + (counts['NEW ACTIVE REMOVED OLD'] || 0);
   var pending = (counts.PENDING || 0) + (counts['CHECK AGAIN'] || 0) + (counts['TRY TO REACH'] || 0) + (counts['COME BACK LATER'] || 0);
-  var other = total - active - pending - (counts['Not visited'] || 0);
+  var other = total - active - pending - (counts['Not visited'] || 0) - (counts['HE DOESN\'T WANT THE APP'] || 0);
   var segments = [
     { count: active, color: '#2e7d32' },
     { count: pending, color: '#1565c0' },

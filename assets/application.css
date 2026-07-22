@@ -74,8 +74,8 @@
 .app-status-check-again { background: #fff176; color: #5d4037; }
 .app-status-try-reach { background: #1565c0; color: #fff; }
 .app-status-follow { background: #ffe8cc; color: #9a5200; }
-.app-status-refused { background: #f8d7da; color: #721c24; }
-.app-status-empty { background: #eef1f6; color: #666; }
+.app-status-refused { background: #c0c0c0; color: #333; }
+.app-status-empty { background: #f8d7da; color: #b71c1c; }
 .app-import-bar {
   display: flex;
   flex-wrap: wrap;

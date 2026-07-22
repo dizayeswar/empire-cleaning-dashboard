@@ -13,7 +13,7 @@ var APP_STATUS_OPTIONS = [
   'COME BACK LATER',
   'HE DOESN\'T WANT THE APP'
 ];
-var APP_SEED_URL = 'assets/application-seed.json?v=2026-07-22-application-v3';
+var APP_SEED_URL = 'assets/application-seed.json?v=2026-07-22-application-v4';
 var _appRows = [];
 var _appSaving = {};
 var _appExpectedTotal = 0;
@@ -23,6 +23,25 @@ var _appSeedItems = null;
 function appToken_() { return empireGetToken() || ''; }
 function appEsc_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function appPropertySortKey_(propertyId) {
+  return String(propertyId || '').toUpperCase().split('-').map(function (part) {
+    if (part === 'G') return '0';
+    var m = part.match(/^([A-Z]*)(\d+)$/);
+    if (m) return m[1] + ('00000' + m[2]).slice(-5);
+    if (/^\d+$/.test(part)) return ('00000' + part).slice(-5);
+    return part;
+  }).join('\u0000');
+}
+
+function appSortRows_(rows) {
+  return rows.slice().sort(function (a, b) {
+    var ka = appPropertySortKey_(a.propertyId);
+    var kb = appPropertySortKey_(b.propertyId);
+    if (ka !== kb) return ka < kb ? -1 : 1;
+    return String(a.propertyId || '').localeCompare(String(b.propertyId || ''));
+  });
 }
 
 function appStatusClass_(status) {
@@ -202,9 +221,7 @@ function appLoad_(force) {
     parts.forEach(function (rows) {
       _appRows = _appRows.concat(rows);
     });
-    _appRows.sort(function (a, b) {
-      return String(a.propertyId || '').localeCompare(String(b.propertyId || ''));
-    });
+    _appRows = appSortRows_(_appRows);
     appToggleImportBar_();
     appRenderTable_();
   }).catch(function (e) {
@@ -266,13 +283,16 @@ function appImportBatch_(slice, tries) {
     });
 }
 
-function appImportSeed_() {
+function appImportSeed_(clearFirst) {
   var msg = document.getElementById('appImportMsg');
   var btn = document.getElementById('appImportBtn');
+  var clearBtn = document.getElementById('appClearBtn');
   if (btn) btn.disabled = true;
-  if (msg) msg.textContent = 'Loading seed file…';
-  appEnsureSeedMeta_()
-    .then(function (items) {
+  if (clearBtn) clearBtn.disabled = true;
+  if (msg) msg.textContent = clearFirst ? 'Clearing old data…' : 'Loading seed file…';
+
+  function runImport() {
+    return appEnsureSeedMeta_().then(function (items) {
       if (!items.length) throw new Error('Seed file is empty');
       var chunk = 150;
       var i = 0;
@@ -285,6 +305,7 @@ function appImportSeed_() {
           return appLoad_(true).then(function () {
             if (msg) msg.textContent = 'Sync complete — ' + _appRows.length + ' / ' + _appExpectedTotal + ' apartments loaded.';
             if (btn) btn.disabled = false;
+            if (clearBtn) clearBtn.disabled = false;
           });
         }
         if (msg) msg.textContent = 'Syncing ' + Math.min(i + chunk, items.length) + ' / ' + items.length + ' apartments…';
@@ -304,11 +325,28 @@ function appImportSeed_() {
         });
       }
       return nextBatch();
-    })
-    .catch(function (e) {
-      if (msg) msg.textContent = 'Sync failed: ' + String((e && e.message) || e);
-      if (btn) btn.disabled = false;
     });
+  }
+
+  var chain = Promise.resolve();
+  if (clearFirst) {
+    chain = fetchJSONRetry({ action: 'clearApplicationChecks', token: appToken_() }, 2, 60000).then(function (d) {
+      if (!d || !(d.ok || d.success)) throw new Error((d && (d.message || d.error)) || 'Could not clear data');
+      _appRows = [];
+    });
+  }
+  chain.then(runImport).catch(function (e) {
+    if (msg) msg.textContent = 'Sync failed: ' + String((e && e.message) || e);
+    if (btn) btn.disabled = false;
+    if (clearBtn) clearBtn.disabled = false;
+  });
+}
+
+function appClearAndResync_() {
+  var expected = _appExpectedTotal || 4199;
+  var ok = confirm('Delete all ' + _appRows.length + ' door check records and re-import all ' + expected + ' apartments from Excel?\n\nThis fixes mixed-up data.');
+  if (!ok) return;
+  appImportSeed_(true);
 }
 
 function appEnterApp_() {

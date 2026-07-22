@@ -88,6 +88,11 @@
   font-size: 13px;
   color: var(--text-soft);
 }
+.app-import-bar button.app-clear-btn {
+  background: #C5504F;
+  color: #fff;
+  border-color: #C5504F;
+}
 .app-counts-bar {
   margin: 0 0 12px;
   padding: 10px 12px;

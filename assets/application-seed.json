@@ -153,7 +153,7 @@
         "project":  "RA",
         "propertyId":  "RA-B1-4-9",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -327,7 +327,7 @@
         "project":  "RA",
         "propertyId":  "RA-A1-9-19",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -615,7 +615,7 @@
         "project":  "RA",
         "propertyId":  "RA-A2-7-16",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -669,7 +669,7 @@
         "project":  "RA",
         "propertyId":  "RA-A2-9-19",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -1587,7 +1587,7 @@
         "project":  "RA",
         "propertyId":  "RA-A5-6-13",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -1605,7 +1605,7 @@
         "project":  "RA",
         "propertyId":  "RA-A5-6-14",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -2235,7 +2235,7 @@
         "project":  "RA",
         "propertyId":  "RA-A7-5-11",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -2307,7 +2307,7 @@
         "project":  "RA",
         "propertyId":  "RA-A7-7-15",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -2919,7 +2919,7 @@
         "project":  "RA",
         "propertyId":  "RA-A9-5-11",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -2991,7 +2991,7 @@
         "project":  "RA",
         "propertyId":  "RA-A9-7-15",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3009,7 +3009,7 @@
         "project":  "RA",
         "propertyId":  "RA-A9-7-16",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3297,7 +3297,7 @@
         "project":  "RA",
         "propertyId":  "RA-A10-6-13",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3315,7 +3315,7 @@
         "project":  "RA",
         "propertyId":  "RA-A10-6-14",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3351,7 +3351,7 @@
         "project":  "RA",
         "propertyId":  "RA-A10-7-16",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3405,7 +3405,7 @@
         "project":  "RA",
         "propertyId":  "RA-A10-9-19",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -3747,7 +3747,7 @@
         "project":  "RA",
         "propertyId":  "RA-A11-9-19",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "RA",
@@ -5031,13 +5031,13 @@
         "project":  "WW",
         "propertyId":  "WW-5-G-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-6-G-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5145,7 +5145,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-G-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5217,7 +5217,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-1-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5385,7 +5385,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-1-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5397,7 +5397,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-1-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5475,13 +5475,13 @@
         "project":  "WW",
         "propertyId":  "WW-4-1-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-5-1-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5565,7 +5565,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-2-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5595,7 +5595,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-2-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -5937,7 +5937,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-3-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6195,7 +6195,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-3-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6225,7 +6225,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-3-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6315,7 +6315,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-4-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6381,7 +6381,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-4-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6651,7 +6651,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-5-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -6921,7 +6921,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-5-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7017,7 +7017,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-6-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7095,7 +7095,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-6-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7125,7 +7125,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-6-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7185,7 +7185,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-6-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7197,7 +7197,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-6-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7215,7 +7215,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-6-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7281,7 +7281,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-6-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7467,7 +7467,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-7-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7557,7 +7557,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-7-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7575,7 +7575,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-7-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7635,7 +7635,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-7-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7647,7 +7647,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-7-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7737,7 +7737,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-8-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7827,7 +7827,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-8-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -7995,7 +7995,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-8-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8085,7 +8085,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-9-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8175,7 +8175,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-9-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8265,7 +8265,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-9-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8355,19 +8355,19 @@
         "project":  "WW",
         "propertyId":  "WW-4-9-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-5-9-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-6-9-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8901,13 +8901,13 @@
         "project":  "WW",
         "propertyId":  "WW-5-11-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-6-11-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -8997,7 +8997,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-11-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9165,7 +9165,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-12-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9177,7 +9177,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-12-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9261,7 +9261,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-12-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9525,7 +9525,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-13-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9627,7 +9627,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-13-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9795,7 +9795,7 @@
         "project":  "WW",
         "propertyId":  "WW-4-13-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9891,7 +9891,7 @@
         "project":  "WW",
         "propertyId":  "WW-5-14-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -9981,13 +9981,13 @@
         "project":  "WW",
         "propertyId":  "WW-5-14-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
         "propertyId":  "WW-6-14-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10071,7 +10071,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-14-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10155,7 +10155,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-14-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10491,7 +10491,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-15-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10737,7 +10737,7 @@
         "project":  "WW",
         "propertyId":  "WW-6-16-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10755,7 +10755,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-16-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -10833,7 +10833,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-16-D",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -11067,7 +11067,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-17-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -12429,7 +12429,7 @@
         "project":  "WW",
         "propertyId":  "WW-9-23-A",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -12891,7 +12891,7 @@
         "project":  "WW",
         "propertyId":  "WW-11-25-C",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -14313,7 +14313,7 @@
         "project":  "WW",
         "propertyId":  "WW-13-20-B",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WW",
@@ -16587,7 +16587,7 @@
         "project":  "WD",
         "propertyId":  "WD-A-3-01",
         "phone":  "",
-        "status":  "EMPTY"
+        "status":  ""
     },
     {
         "project":  "WD",

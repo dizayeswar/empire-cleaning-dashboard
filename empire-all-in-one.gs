@@ -23,7 +23,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-22-application-v3';
+var SCRIPT_VERSION = '2026-07-22-application-v4';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -388,7 +388,7 @@ function doPost(e) {
       'getCivilSummary':'civil department','saveCivilSummary':'civil department',
       'getAsaasItems':'asaas','addAsaasItem':'asaas','updateAsaasItem':'asaas','markAsaasReturned':'asaas',
       'deleteAsaasItem':'asaas','clearAsaasItems':'asaas',
-      'getApplicationChecks':'application','getApplicationCheckMeta':'application','updateApplicationCheck':'application','importApplicationChecks':'application'
+      'getApplicationChecks':'application','getApplicationCheckMeta':'application','updateApplicationCheck':'application','importApplicationChecks':'application','clearApplicationChecks':'application'
     };
     var trashActions = {getTrash:1, restoreTrash:1, purgeTrash:1, getUiSettings:1, saveUiSettings:1};
     var requiredDept = trashActions[action] ? body.dept : deptByAction[action];
@@ -515,6 +515,7 @@ function doPost(e) {
     if (action==='getApplicationCheckMeta') return respond(handleGetApplicationCheckMeta(body, auth));
     if (action==='updateApplicationCheck') return respond(handleUpdateApplicationCheck(body, auth));
     if (action==='importApplicationChecks') return respond(handleImportApplicationChecks(body, auth));
+    if (action==='clearApplicationChecks') return respond(handleClearApplicationChecks(body, auth));
     if (action==='getTrash') return respond(handleGetTrash(body));
     if (action==='restoreTrash') return respond(handleRestoreTrash(body));
     if (action==='purgeTrash') return respond(handlePurgeTrash(body));
@@ -4427,6 +4428,16 @@ function applicationCheckRowToObj_(row) {
   };
 }
 
+function applicationPropertySortKey_(propertyId) {
+  return String(propertyId || '').toUpperCase().split('-').map(function (part) {
+    if (part === 'G') return '0';
+    var m = part.match(/^([A-Z]*)(\d+)$/);
+    if (m) return m[1] + ('00000' + m[2]).slice(-5);
+    if (/^\d+$/.test(part)) return ('00000' + part).slice(-5);
+    return part;
+  }).join('\u0000');
+}
+
 function handleGetApplicationCheckMeta(body, auth) {
   var ss = getSS_();
   var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
@@ -4457,9 +4468,24 @@ function handleGetApplicationChecks(body, auth) {
     out.push(item);
   }
   out.sort(function (a, b) {
+    var ka = applicationPropertySortKey_(a.propertyId);
+    var kb = applicationPropertySortKey_(b.propertyId);
+    if (ka !== kb) return ka < kb ? -1 : 1;
     return String(a.propertyId || '').localeCompare(String(b.propertyId || ''));
   });
   return out;
+}
+
+function handleClearApplicationChecks(body, auth) {
+  if (String(auth.role || '').toLowerCase() !== 'admin') {
+    return {ok:false,success:false,error:'not_allowed',message:'Only an admin can clear application data.'};
+  }
+  var ss = getSS_();
+  var sheet = ss.getSheetByName(APPLICATION_CHECKS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return {ok:true,success:true,deleted:0};
+  var deleted = sheet.getLastRow() - 1;
+  sheet.deleteRows(2, deleted);
+  return {ok:true,success:true,deleted:deleted};
 }
 
 function handleUpdateApplicationCheck(body, auth) {

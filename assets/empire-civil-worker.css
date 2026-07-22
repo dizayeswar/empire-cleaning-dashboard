@@ -441,6 +441,7 @@ body.worker-field-modal-open {
   border: 2px solid var(--card-border);
 }
 .worker-field-my-media {
+  position: relative;
   width: 72px;
   height: 72px;
   flex-shrink: 0;
@@ -886,6 +887,31 @@ body.worker-field-modal-open {
   width: 22px;
   height: 22px;
   display: block;
+}
+
+.worker-field-my-photo-count {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(13, 74, 133, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.worker-photo-limit-hint {
+  margin: -4px 0 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.35;
+}
+.worker-field-view-photo-grid {
+  margin-top: 8px;
 }
 
 .worker-photo-add-zone {

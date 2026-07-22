@@ -22,7 +22,7 @@ var WORKER_PUSH_SHEET = 'WorkerPushTokens';
 var RESET_PASSWORD = 'empire2026';
 var TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
 
-var SCRIPT_VERSION = '2026-07-22-asaas-v1';
+var SCRIPT_VERSION = '2026-07-22-electric-photos';
 var CIVIL_ASSIGNED_COL = 17;
 var CIVIL_WORKERS_REQUIRED_COL = 18;
 var CIVIL_WORKER_COMPLETIONS_COL = 19;
@@ -3042,15 +3042,31 @@ function ensureElectricWorkerReportsSheet_(sheet) {
   }
 }
 
+function normalizeElectricReportPhotos_(body) {
+  var urls = [];
+  if (body && body.photos && body.photos.length) {
+    for (var i = 0; i < body.photos.length; i++) {
+      var u = String(body.photos[i] || '').trim();
+      if (u) urls.push(u);
+    }
+  }
+  if (!urls.length) {
+    urls = parseFixedPhotosFromCell_(String(body && body.photo || '').trim());
+  }
+  if (urls.length > 3) urls = urls.slice(0, 3);
+  return urls;
+}
+
 function handleAddElectricWorkerReport(body, auth) {
   var place = String(body.place || body.location || '').trim();
   var note = String(body.note || body.notes || '').trim();
-  var photo = String(body.photo || '').trim();
+  var jobPhotos = normalizeElectricReportPhotos_(body);
+  var photo = jobPhotos.length ? formatFixedPhotosForStorage_(jobPhotos) : '';
   var invoicePhoto = String(body.invoicePhoto || '').trim();
   var voiceNote = body.voiceNote || null;
   if (voiceNote && typeof voiceNote === 'object') voiceNote = formatAssignVoiceNote_(voiceNote);
   else voiceNote = String(voiceNote || '').trim();
-  if (!place && !note && !photo && !voiceNote) {
+  if (!place && !note && !jobPhotos.length && !voiceNote) {
     return {ok:false,success:false,error:'empty_report',message:'Add a place, note, photo, or voice recording before submitting.'};
   }
   var ss = getSS_();
@@ -3067,7 +3083,7 @@ function handleAddElectricWorkerReport(body, auth) {
   if (reportType !== 'refundable' && reportType !== 'maintenance') {
     reportType = electricWorkerReportTypeFromAmount_(amount);
   }
-  if (reportType === 'refundable' && !photo) {
+  if (reportType === 'refundable' && !jobPhotos.length) {
     return {ok:false,success:false,error:'missing_job_photo',message:'Refundable reports need a job photo before sending.'};
   }
   var materials = String(body.materials || '').trim();
@@ -3170,13 +3186,15 @@ function handleGetElectricWorkerReports(body, auth) {
     }
     var status = String(rows[i][11] || 'pending').trim().toLowerCase();
     if (!status) status = 'pending';
+    var jobPhotos = parseFixedPhotosFromCell_(String(rows[i][4] || ''));
     out.push({
       id: String(rows[i][0] || ''),
       num: Number(rows[i][FIELD_REPORT_NUM_COL - 1] || 0) || 0,
       date: ds,
       place: String(rows[i][2] || ''),
       note: String(rows[i][3] || ''),
-      photo: String(rows[i][4] || ''),
+      photo: jobPhotos.length ? jobPhotos[0] : '',
+      photos: jobPhotos,
       voiceNote: parseAssignVoiceNote_(rows[i][5]),
       reportedBy: String(rows[i][6] || ''),
       workerName: String(rows[i][7] || ''),
@@ -3253,7 +3271,8 @@ function handleTransferElectricWorkerReport(body, auth) {
   }
   var jobType = reportType === 'refundable' ? 'refundable' : 'general';
   var workerName = String(row[7] || row[6] || '');
-  var photo = String(row[4] || '');
+  var jobPhotos = parseFixedPhotosFromCell_(String(row[4] || ''));
+  var photo = jobPhotos.length ? jobPhotos[0] : '';
   var materials = String(body.materials || row[16] || '').trim() || '0';
   var now = new Date();
   var reportMonth = electricReportMonthOfDate_(dateStr);

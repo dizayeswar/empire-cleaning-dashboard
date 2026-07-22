@@ -502,6 +502,39 @@ function fieldReportType_(r) {
   var amt = parseFloat(r && r.amount);
   return (!isNaN(amt) && amt > 0) ? 'refundable' : 'maintenance';
 }
+function fieldReportJobPhotos_(r) {
+  if (r && r.photos && r.photos.length) return r.photos.slice();
+  var raw = String((r && r.photo) || '').trim();
+  if (!raw) return [];
+  if (raw.charAt(0) === '[') {
+    try {
+      var arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter(function (u) { return String(u || '').trim(); });
+    } catch (e) {}
+  }
+  if (raw.indexOf('|') !== -1) {
+    return raw.split('|').map(function (p) { return String(p || '').trim(); }).filter(Boolean);
+  }
+  return [raw];
+}
+function fieldReportJobPhotosHtml_(photos, label) {
+  if (!photos || !photos.length) return '';
+  var h = '<div class="field-report-modal-section field-report-modal-photo-wrap">';
+  h += '<span class="field-report-modal-label">' + _esc(label || 'Job photos') + '</span>';
+  if (photos.length === 1) {
+    h += '<div class="field-report-modal-photo-frame">';
+    h += '<img class="field-report-modal-photo" src="' + photos[0] + '" onclick="bigImg(this.src)" alt="Report photo">';
+    h += '</div>';
+  } else {
+    h += '<div class="field-report-modal-photo-grid">';
+    photos.forEach(function (url, i) {
+      h += '<div class="field-report-modal-photo-frame"><img class="field-report-modal-photo" src="' + url + '" onclick="bigImg(this.src)" alt="Report photo ' + (i + 1) + '"></div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
 function fieldReportNeedsInvoice_(r) {
   return fieldReportType_(r) === 'refundable' && fieldReportIsPending_(r) && !String(r.invoicePhoto || '').trim();
 }
@@ -622,8 +655,11 @@ function renderFieldReports(){
   rows.forEach(function(r){
     var who=r.workerName||r.reportedBy||'Worker';
     var ref=fieldReportRef_(r);
-    var photoHtml=r.photo
-      ? '<img class="issue-card-photo" src="'+r.photo+'" loading="lazy" alt="" onclick="event.stopPropagation();bigImg(this.src)">'
+    var jobPhotos = fieldReportJobPhotos_(r);
+    var photoHtml = jobPhotos.length
+      ? ('<div class="field-report-card-photo-wrap"><img class="issue-card-photo" src="'+jobPhotos[0]+'" loading="lazy" alt="" onclick="event.stopPropagation();bigImg(this.src)">'
+        + (jobPhotos.length > 1 ? ('<span class="field-report-card-photo-count">+' + (jobPhotos.length - 1) + '</span>') : '')
+        + '</div>')
       : '<div class="issue-card-photo issue-card-nophoto">No photo</div>';
     var voice=fieldReportIsPending_(r)?fieldReportVoiceBadge_(r.voiceNote):'';
     var cardClass='issue-card field-report-card'+(fieldReportIsPending_(r)?'':' field-report-card-done');
@@ -661,7 +697,8 @@ function openFieldReportEditor(id){
   var who=r.workerName||r.reportedBy||'Worker';
   var queue=fieldReportPendingQueue_();
   var pos=queue.findIndex(function(x){ return String(x.id)===String(id); });
-  var hasPhoto=!!r.photo;
+  var jobPhotos = fieldReportJobPhotos_(r);
+  var hasPhoto = jobPhotos.length > 0;
   var hasInvoice=!!r.invoicePhoto;
   var hasVoice=!!(r.voiceNote&&r.voiceNote.url);
   var h='<div class="field-report-modal field-report-editor">';
@@ -693,11 +730,7 @@ function openFieldReportEditor(id){
   if(hasPhoto || hasInvoice || hasVoice || fieldReportType_(r)==='refundable'){
     h+='<div class="field-report-editor-side">';
     if(hasPhoto){
-      h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
-      h+='<span class="field-report-modal-label">Job photo</span>';
-      h+='<div class="field-report-modal-photo-frame">';
-      h+='<img class="field-report-modal-photo" src="'+r.photo+'" onclick="bigImg(this.src)" alt="Report photo">';
-      h+='</div></div>';
+      h+=fieldReportJobPhotosHtml_(jobPhotos, 'Job photos');
     }
     if(fieldReportType_(r)==='refundable'){
       h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
@@ -742,7 +775,8 @@ function openFieldReportView(id){
   var who=r.workerName||r.reportedBy||'Worker';
   var body=document.getElementById('fieldReportModalBody');
   if(!body) return;
-  var hasPhoto=!!r.photo;
+  var jobPhotos = fieldReportJobPhotos_(r);
+  var hasPhoto = jobPhotos.length > 0;
   var hasInvoice=!!r.invoicePhoto;
   var hasVoice=!!(r.voiceNote&&r.voiceNote.url);
   var hasMedia=hasPhoto||hasInvoice||hasVoice||fieldReportType_(r)==='refundable';
@@ -765,11 +799,8 @@ function openFieldReportView(id){
   if(hasMedia){
     h+='<div class="field-report-modal-side">';
     if(hasPhoto){
-      h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';
-      h+='<span class="field-report-modal-label">Job photo</span>';
-      h+='<div class="field-report-modal-photo-frame">';
-      h+='<img class="field-report-modal-photo" src="'+r.photo+'" onclick="bigImg(this.src)" alt="Report photo">';
-      h+='</div><p class="field-report-modal-photo-hint">Tap photo to enlarge</p></div>';
+      h+=fieldReportJobPhotosHtml_(jobPhotos, 'Job photos');
+      h+='<p class="field-report-modal-photo-hint">Tap photo to enlarge</p>';
     }
     if(fieldReportType_(r)==='refundable'){
       h+='<div class="field-report-modal-section field-report-modal-photo-wrap">';

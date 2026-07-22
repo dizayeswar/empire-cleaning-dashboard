@@ -188,8 +188,10 @@ var ISSUE_CONFIGS = {
     },
     spots: ['Service stairs','Main stairs','Service door','Rooftop door','Exit door','Elevator','Wall','Ceiling','Corridor','Basement','Rooftop','Garden','Parking','Other'],
     issueTypes: ['Power outage','Broken light','Flickering light','Faulty socket / outlet','Broken switch','Exposed / loose wire','Tripped breaker','Burnt smell','No power in area','Generator issue','Distribution panel issue','Other'],
+    workerJobPhotoMax: 3,
     workerFieldReport: {
       enabled: true,
+      jobPhotoMax: 3,
       photoFolder: 'issues/electric-field',
       voiceDraftId: 'electric-field-report',
       actions: {

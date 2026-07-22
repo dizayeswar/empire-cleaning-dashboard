@@ -1,8 +1,8 @@
 /* Electric field worker — self-reported items for Electrical Department */
 
-var _wfrPhotoUrl = '';
+var _wfrJobPhotos = [];
+var _wfrJobUploading = 0;
 var _wfrInvoicePhotoUrl = '';
-var _wfrUploading = false;
 var _wfrInvoiceUploading = false;
 var _wfrSubmitting = false;
 var _wfrInvoiceSaving = false;
@@ -36,11 +36,12 @@ function workerFieldReportUi_(key, fallback) {
   return ui[key] != null && ui[key] !== '' ? ui[key] : fallback;
 }
 
-function workerFieldReportT_(key, fallback) {
+function workerFieldReportT_(key, fallback, params) {
   if (typeof workerT === 'function') {
-    var v = workerT(key);
+    var v = workerT(key, params);
     if (v && v !== key) return v;
   }
+  if (typeof fallback === 'function') return fallback(params || {});
   return fallback != null ? fallback : key;
 }
 
@@ -120,6 +121,66 @@ function workerFieldReportNeedsInvoice_(r) {
     && !String(r.invoicePhoto || '').trim();
 }
 
+function workerFieldReportJobPhotoMax_() {
+  var cfg = workerFieldReportCfg_();
+  var n = cfg && cfg.jobPhotoMax;
+  if (n > 0) return n;
+  n = ISSUE_CFG && ISSUE_CFG.workerJobPhotoMax;
+  return n > 0 ? n : 3;
+}
+
+function workerFieldReportJobPhotosFromRow_(r) {
+  if (r && r.photos && r.photos.length) return r.photos.slice();
+  var raw = String((r && r.photo) || '').trim();
+  if (!raw) return [];
+  if (raw.charAt(0) === '[') {
+    try {
+      var arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter(function (u) { return String(u || '').trim(); });
+    } catch (e) {}
+  }
+  if (raw.indexOf('|') !== -1) {
+    return raw.split('|').map(function (p) { return String(p || '').trim(); }).filter(Boolean);
+  }
+  return [raw];
+}
+
+function workerFieldReportRenderJobPhotoGrid_() {
+  var grid = document.getElementById('wfrJobPhotoGrid');
+  if (!grid) return;
+  if (!_wfrJobPhotos.length) {
+    grid.innerHTML = '';
+    grid.classList.add('worker-photo-grid-empty');
+  } else {
+    grid.classList.remove('worker-photo-grid-empty');
+    grid.innerHTML = _wfrJobPhotos.map(function (url, i) {
+      return '<div class="worker-photo-item"><img src="' + workerFieldReportEsc_(url) + '" onclick="bigImg(this.src)" alt="Photo ' + (i + 1) + '">'
+        + '<button type="button" class="worker-photo-remove" onclick="workerFieldReportRemoveJobPhoto(' + i + ')" aria-label="' + workerFieldReportT_('wfrRemovePhotoAria', 'Remove photo') + '">&times;</button>'
+        + '<span class="worker-photo-label">' + workerFieldReportT_('wfrPhotoN', function (p) { return 'Photo ' + (p.index || 1); }, { index: i + 1 }) + '</span></div>';
+    }).join('');
+  }
+  var addZone = document.getElementById('wfrJobPhotoAddZone');
+  if (addZone) {
+    var max = workerFieldReportJobPhotoMax_();
+    addZone.style.display = (_wfrJobPhotos.length >= max) ? 'none' : '';
+  }
+  var status = document.getElementById('wfrPhotoStatus');
+  if (status && !_wfrJobUploading) {
+    if (_wfrJobPhotos.length) {
+      status.textContent = '\u2705 ' + workerFieldReportT_('wfrJobPhotosReady', function (p) {
+        return p.count + ' photo' + (p.count === 1 ? '' : 's') + ' ready';
+      }, { count: _wfrJobPhotos.length });
+    } else {
+      status.textContent = '';
+    }
+  }
+}
+
+function workerFieldReportRemoveJobPhoto_(idx) {
+  _wfrJobPhotos.splice(idx, 1);
+  workerFieldReportRenderJobPhotoGrid_();
+}
+
 function workerFieldReportIsRefundableForm_() {
   var check = document.getElementById('wfrRefundableCheck');
   if (check) return !!check.checked;
@@ -169,6 +230,7 @@ function workerFieldReportInit_() {
     }
   }
   workerFieldReportSyncRefundableUi_();
+  workerFieldReportRenderJobPhotoGrid_();
   workerFieldReportMountVoice_();
   workerFieldReportInitCardTap_();
   workerFieldReportClearForm_(false);
@@ -214,14 +276,13 @@ function workerFieldReportPickPhoto_() {
 }
 
 function workerFieldReportClearForm_(resetMsg) {
-  _wfrPhotoUrl = '';
+  _wfrJobPhotos = [];
+  _wfrJobUploading = 0;
   _wfrInvoicePhotoUrl = '';
-  _wfrUploading = false;
   _wfrInvoiceUploading = false;
   var place = document.getElementById('wfrPlace');
   var note = document.getElementById('wfrNote');
   var materials = document.getElementById('wfrMaterials');
-  var img = document.getElementById('wfrImage');
   var invoiceImg = document.getElementById('wfrInvoiceImage');
   var status = document.getElementById('wfrPhotoStatus');
   var invoiceStatus = document.getElementById('wfrInvoiceStatus');
@@ -233,16 +294,13 @@ function workerFieldReportClearForm_(resetMsg) {
   if (check) check.checked = false;
   var amount = document.getElementById('wfrAmount');
   if (amount) amount.value = '';
-  if (img) {
-    img.style.display = 'none';
-    img.removeAttribute('src');
-  }
   if (invoiceImg) {
     invoiceImg.style.display = 'none';
     invoiceImg.removeAttribute('src');
   }
   if (status) status.textContent = '';
   if (invoiceStatus) invoiceStatus.textContent = '';
+  workerFieldReportRenderJobPhotoGrid_();
   workerFieldReportSyncRefundableUi_();
   if (typeof assignVoiceClearDraft === 'function') assignVoiceClearDraft(workerFieldReportVoiceId_());
   if (resetMsg !== false && msg) {
@@ -254,13 +312,22 @@ function workerFieldReportClearForm_(resetMsg) {
 function workerFieldReportProcessPhoto_(file, kind) {
   if (!file) return;
   kind = kind === 'invoice' ? 'invoice' : 'job';
+  if (kind === 'job') {
+    var max = workerFieldReportJobPhotoMax_();
+    if (_wfrJobPhotos.length >= max) {
+      alert(workerFieldReportT_('wfrPhotoMaxReached', function (p) {
+        return 'You can add up to ' + p.max + ' job photos. Remove one to add another.';
+      }, { max: max }));
+      return;
+    }
+  }
   var status = document.getElementById(kind === 'invoice' ? 'wfrInvoiceStatus' : 'wfrPhotoStatus');
   if (status) status.textContent = workerFieldReportT_('wfrUploading', 'Uploading\u2026');
   if (kind === 'invoice') _wfrInvoiceUploading = true;
-  else _wfrUploading = true;
+  else _wfrJobUploading++;
   empireCompressImage(file, workerFieldReportPhotoFolder_(), function (url) {
     if (kind === 'invoice') _wfrInvoiceUploading = false;
-    else _wfrUploading = false;
+    else _wfrJobUploading = Math.max(0, _wfrJobUploading - 1);
     if (url) {
       if (kind === 'invoice') {
         _wfrInvoicePhotoUrl = url;
@@ -271,13 +338,8 @@ function workerFieldReportProcessPhoto_(file, kind) {
         }
         if (status) status.textContent = '\u2705 ' + workerFieldReportT_('wfrInvoicePhotoReady', 'Invoice photo ready — tap to replace');
       } else {
-        _wfrPhotoUrl = url;
-        var im = document.getElementById('wfrImage');
-        if (im) {
-          im.src = url;
-          im.style.display = 'block';
-        }
-        if (status) status.textContent = '\u2705 ' + workerFieldReportT_('wfrJobPhotoReady', 'Job photo ready — tap to replace');
+        _wfrJobPhotos.push(url);
+        workerFieldReportRenderJobPhotoGrid_();
       }
     } else if (status) {
       status.textContent = '\u274C ' + (_lastEmpireUploadError || workerFieldReportT_('wfrUploadFailed', 'Upload failed — try again'));
@@ -397,8 +459,11 @@ function workerFieldReportRenderMine_() {
     return;
   }
   host.innerHTML = '<div class="worker-field-my-list">' + _wfrReports.slice(0, 12).map(function (r) {
-    var media = r.photo
-      ? ('<div class="worker-field-my-media"><img class="worker-field-my-thumb" src="' + workerFieldReportEsc_(r.photo) + '" alt=""></div>')
+    var jobPhotos = workerFieldReportJobPhotosFromRow_(r);
+    var media = jobPhotos.length
+      ? ('<div class="worker-field-my-media"><img class="worker-field-my-thumb" src="' + workerFieldReportEsc_(jobPhotos[0]) + '" alt="">'
+        + (jobPhotos.length > 1 ? ('<span class="worker-field-my-photo-count">' + jobPhotos.length + '</span>') : '')
+        + '</div>')
       : '<div class="worker-field-my-media worker-field-my-nophoto">' + workerFieldReportT_('wfrNoJobPhoto', 'No job photo') + '</div>';
     var amountLabel = workerFieldReportAmountLabel_(r.amount);
     var voiceBadge = workerFieldReportVoiceBadgeHtml_(r.voiceNote);
@@ -451,9 +516,14 @@ function workerFieldReportOpenView_(id) {
   if (r.note) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + workerFieldReportT_('wfrNoteLabel', 'Note') + '</span><p class="worker-field-view-text">' + workerFieldReportEsc_(r.note) + '</p></div>';
   if (r.materials) h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + workerFieldReportT_('wfrMaterials', 'Materials') + '</span><p class="worker-field-view-text">' + workerFieldReportEsc_(r.materials) + '</p></div>';
   if (amountLabel) h += '<div class="worker-field-view-row"><span class="worker-field-view-label">' + workerFieldReportT_('wfrAmount', 'Amount') + '</span><span class="worker-field-view-value worker-field-view-amount">' + workerFieldReportEsc_(amountLabel) + '</span></div>';
-  if (r.photo) {
-    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + workerFieldReportT_('wfrJobPhoto', 'Job photo') + '</span>';
-    h += '<img class="worker-field-view-photo" src="' + workerFieldReportEsc_(r.photo) + '" alt="Job photo"></div>';
+  var jobPhotos = workerFieldReportJobPhotosFromRow_(r);
+  if (jobPhotos.length) {
+    h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + workerFieldReportT_('wfrJobPhotos', 'Job photos') + '</span>';
+    h += '<div class="worker-photo-grid worker-field-view-photo-grid">';
+    jobPhotos.forEach(function (url, i) {
+      h += '<div class="worker-photo-item"><img class="worker-field-view-photo" src="' + workerFieldReportEsc_(url) + '" alt="Job photo ' + (i + 1) + '"></div>';
+    });
+    h += '</div></div>';
   }
   if (workerFieldReportType_(r) === 'refundable') {
     h += '<div class="worker-field-view-block"><span class="worker-field-view-label">' + workerFieldReportT_('wfrInvoicePhoto', 'Invoice photo') + '</span>';
@@ -596,7 +666,7 @@ function workerFieldReportSubmit_() {
   if (_wfrSubmitting) return;
   var cfg = workerFieldReportCfg_();
   if (!cfg || !cfg.actions || !cfg.actions.add) return;
-  if (_wfrUploading || _wfrInvoiceUploading) {
+  if (_wfrJobUploading || _wfrInvoiceUploading) {
     alert(workerFieldReportT_('wfrWaitUpload', 'Please wait for the photo to finish uploading.'));
     return;
   }
@@ -614,7 +684,7 @@ function workerFieldReportSubmit_() {
   }
   var msg = document.getElementById('wfrFormMsg');
   var btn = document.getElementById('wfrSubmitBtn');
-  if (refundable && !_wfrPhotoUrl) {
+  if (refundable && !_wfrJobPhotos.length) {
     if (msg) {
       msg.textContent = workerFieldReportT_('wfrNeedJobPhoto', 'Refundable reports need a job photo before sending.');
       msg.className = 'worker-field-msg worker-field-msg-error';
@@ -628,7 +698,7 @@ function workerFieldReportSubmit_() {
     }
     return;
   }
-  if (!place && !note && !_wfrPhotoUrl) {
+  if (!place && !note && !_wfrJobPhotos.length) {
     var draft = typeof assignVoiceDraft_ === 'function' ? assignVoiceDraft_(workerFieldReportVoiceId_()) : null;
     if (!draft || !draft.blob) {
       if (msg) {
@@ -663,7 +733,8 @@ function workerFieldReportSubmit_() {
       materials: materials,
       amount: amount || '',
       reportType: refundable ? 'refundable' : 'maintenance',
-      photo: _wfrPhotoUrl || '',
+      photo: _wfrJobPhotos[0] || '',
+      photos: _wfrJobPhotos.slice(),
       invoicePhoto: _wfrInvoicePhotoUrl || '',
       workerName: typeof civilWorkerName === 'function' ? civilWorkerName(empireGetUser()) : (empireGetUser() || '')
     };
@@ -695,6 +766,7 @@ function workerFieldReportSubmit_() {
   });
 }
 
+window.workerFieldReportRemoveJobPhoto = workerFieldReportRemoveJobPhoto_;
 window.workerFieldReportOpenView = workerFieldReportOpenView_;
 window.workerFieldReportCloseView = workerFieldReportCloseView_;
 window.workerFieldReportHandleRefundableCheck = workerFieldReportHandleRefundableCheck_;

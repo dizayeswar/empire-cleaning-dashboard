@@ -38,7 +38,9 @@
       wfrRefundable: 'Refundable work',
       wfrRefundableHint: 'Leave unchecked for <strong>maintenance</strong>. When checked, add a <strong>job photo</strong> and an <strong>invoice photo</strong>.',
       wfrRefundableNote: 'Refundable work needs a <strong>job photo</strong> and an <strong>invoice photo</strong> before sending.',
-      wfrJobPhoto: 'Job photo',
+      wfrJobPhoto: 'Job photos',
+      wfrJobPhotos: 'Job photos',
+      wfrJobPhotoHint: 'Up to 3 photos — camera or gallery',
       wfrAddPhoto: 'Add photo — camera or gallery',
       wfrInvoicePhoto: 'Invoice photo',
       wfrSubmit: 'Send to Electrical Department',
@@ -49,6 +51,15 @@
       wfrSubmitSuccess: 'Report sent to Electrical Department.',
       wfrUploading: 'Uploading…',
       wfrJobPhotoReady: 'Job photo ready — tap to replace',
+      wfrJobPhotosReady: function (p) {
+        var n = p.count || 0;
+        return n + ' photo' + (n === 1 ? '' : 's') + ' ready';
+      },
+      wfrPhotoMaxReached: function (p) {
+        return 'You can add up to ' + (p.max || 3) + ' job photos. Remove one to add another.';
+      },
+      wfrPhotoN: function (p) { return 'Photo ' + (p.index || 1); },
+      wfrRemovePhotoAria: 'Remove photo',
       wfrInvoicePhotoReady: 'Invoice photo ready — tap to replace',
       wfrInvoicePhotoReadyShort: 'Invoice photo ready',
       wfrUploadFailed: 'Upload failed — try again',
@@ -104,6 +115,12 @@
       fixAddPhoto: 'Add photo',
       fixCameraOrGallery: 'Camera or gallery',
       fixAddPhotoAria: 'Add completion photo',
+      fixPhotoMaxHint: function (p) {
+        return 'Up to ' + (p.max || 3) + ' photos — camera or gallery';
+      },
+      fixPhotoMaxReached: function (p) {
+        return 'You can add up to ' + (p.max || 3) + ' photos. Remove one to add another.';
+      },
       fixMarkFixed: 'Mark as fixed',
       fixMarkFixedPhotos: function (p) {
         var n = p.count || 0;
@@ -166,7 +183,9 @@
       wfrRefundable: 'کاری گەڕانەوەی پارە',
       wfrRefundableHint: 'بە بەتاڵی بهێڵە بۆ <strong>چاکسازی</strong>. کاتێک نیشانەکراوە، <strong>وێنەی کار</strong> و <strong>وێنەی پسوولە</strong> زیاد بکە.',
       wfrRefundableNote: 'کاری گەڕانەوەی پارە پێویستی بە <strong>وێنەی کار</strong> و <strong>وێنەی پسوولە</strong> هەیە پێش ناردن.',
-      wfrJobPhoto: 'وێنەی کار',
+      wfrJobPhoto: 'وێنەکانی کار',
+      wfrJobPhotos: 'وێنەکانی کار',
+      wfrJobPhotoHint: 'تا ٣ وێنە — کامێرا یان گالەری',
       wfrAddPhoto: 'وێنە زیاد بکە — کامێرا یان گالەری',
       wfrInvoicePhoto: 'وێنەی پسوولە',
       wfrSubmit: 'ناردن بۆ بەشی کارەبا',
@@ -177,6 +196,14 @@
       wfrSubmitSuccess: 'ڕاپۆرت نێردرا بۆ بەشی کارەبا.',
       wfrUploading: 'بارکردن…',
       wfrJobPhotoReady: 'وێنەی کار ئامادەیە — بۆ گۆڕین دابگرە',
+      wfrJobPhotosReady: function (p) {
+        return (p.count || 0) + ' وێنە ئامادەیە';
+      },
+      wfrPhotoMaxReached: function (p) {
+        return 'تەنها تا ' + (p.max || 3) + ' وێنەی کار دەتوانیت زیاد بکەیت. یەکێک بسڕەوە بۆ زیادکردنی نوێ.';
+      },
+      wfrPhotoN: function (p) { return 'وێنە ' + (p.index || 1); },
+      wfrRemovePhotoAria: 'وێنە بسڕەوە',
       wfrInvoicePhotoReady: 'وێنەی پسوولە ئامادەیە — بۆ گۆڕین دابگرە',
       wfrInvoicePhotoReadyShort: 'وێنەی پسوولە ئامادەیە',
       wfrUploadFailed: 'بارکردن سەرنەکەوت — دووبارە هەوڵ بدەرەوە',
@@ -232,6 +259,12 @@
       fixAddPhoto: 'وێنە زیاد بکە',
       fixCameraOrGallery: 'کامێرا یان گالەری',
       fixAddPhotoAria: 'وێنەی تەواوکردن زیاد بکە',
+      fixPhotoMaxHint: function (p) {
+        return 'تا ' + (p.max || 3) + ' وێنە — کامێرا یان گالەری';
+      },
+      fixPhotoMaxReached: function (p) {
+        return 'تەنها تا ' + (p.max || 3) + ' وێنە دەتوانیت زیاد بکەیت. یەکێک بسڕەوە بۆ زیادکردنی نوێ.';
+      },
       fixMarkFixed: 'وەک چارەسەرکراو نیشان بکە',
       fixMarkFixedPhotos: function (p) {
         return 'وەک چارەسەرکراو نیشان بکە (' + (p.count || 0) + ' وێنە)';

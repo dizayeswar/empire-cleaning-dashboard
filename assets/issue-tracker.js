@@ -23,6 +23,10 @@ function issueAnalyticsContentEl(){ var id=(ISSUE_CFG && ISSUE_CFG.analyticsCont
 initIssueCfg();
 
 var _workerFixPhotos = [];
+function workerJobPhotoMax_() {
+  var n = ISSUE_CFG && ISSUE_CFG.workerJobPhotoMax;
+  return n > 0 ? n : 0;
+}
 var _workerFixId = null;
 var _workerUploading = 0;
 function parseFixedPhotos(fp) {
@@ -1441,7 +1445,13 @@ function openWorkerJob(id) {
   h += r.photo ? '<img class="worker-problem-img" src="' + r.photo + '" alt="Problem">' : '';
   h += '<div class="worker-fix-section worker-fix-simple">';
   h += '<div id="worker-photo-grid" class="worker-photo-grid"></div>';
-  h += '<div class="worker-photo-add-zone" onclick="triggerWorkerPhotoPick()" role="button" tabindex="0" aria-label="' + workerTxt_('fixAddPhotoAria', 'Add completion photo') + '">';
+  var jobPhotoMax = workerJobPhotoMax_();
+  if (jobPhotoMax > 0) {
+    h += '<p class="worker-photo-limit-hint">' + workerTxt_('fixPhotoMaxHint', function (p) {
+      return 'Up to ' + p.max + ' photos — camera or gallery';
+    }, { max: jobPhotoMax }) + '</p>';
+  }
+  h += '<div id="worker-photo-add-zone" class="worker-photo-add-zone" onclick="triggerWorkerPhotoPick()" role="button" tabindex="0" aria-label="' + workerTxt_('fixAddPhotoAria', 'Add completion photo') + '">';
   h += '<span class="worker-camera-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg></span>';
   h += '<strong>' + workerTxt_('fixAddPhoto', 'Add photo') + '</strong><span>' + workerTxt_('fixCameraOrGallery', 'Camera or gallery') + '</span></div>';
   h += '<input type="file" id="worker-fix-camera" class="worker-sr-file-input" accept="image/*" capture="environment" onchange="handleWorkerFixFile(event,\'camera\')">';
@@ -1578,6 +1588,11 @@ function renderWorkerPhotoGrid() {
         + (offline ? ' <span class="worker-photo-offline">' + workerTxt_('fixOnDevice', 'on device') + '</span>' : '') + '</span></div>';
     }).join('');
   }
+  var addZone = document.getElementById('worker-photo-add-zone');
+  if (addZone) {
+    var max = workerJobPhotoMax_();
+    addZone.style.display = (max > 0 && _workerFixPhotos.length >= max) ? 'none' : '';
+  }
   updateWorkerSubmitBtn();
 }
 function updateWorkerSubmitBtn() {
@@ -1610,6 +1625,13 @@ function handleWorkerFixFile(e, source) {
 }
 function processWorkerFixPhoto(file, source) {
   if (!file || !_workerFixId) return;
+  var max = workerJobPhotoMax_();
+  if (max > 0 && _workerFixPhotos.length >= max) {
+    uiAlert(workerTxt_('fixPhotoMaxReached', function (p) {
+      return 'You can add up to ' + p.max + ' photos. Remove one to add another.';
+    }, { max: max }));
+    return;
+  }
   source = source === 'gallery' ? 'gallery' : 'camera';
   _workerUploading++;
   updateWorkerSubmitBtn();

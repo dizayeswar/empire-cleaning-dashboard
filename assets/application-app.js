@@ -250,20 +250,72 @@ function appStatusDisplayLabel_(status) {
 
 function appStatusSelectHtml_(id, value) {
   var stClass = appStatusClass_(value);
-  var h = '<select class="app-status-select ' + stClass + '" data-app-id="' + appEsc_(id) + '" data-app-field="status" onchange="appOnStatusChange_(this)">';
+  var label = appStatusDisplayLabel_(value);
+  var h = '<div class="app-status-dd" data-app-id="' + appEsc_(id) + '">'
+    + '<button type="button" class="app-status-dd-btn ' + stClass + '" onclick="appStatusDdToggle_(event,this)">'
+    + '<span class="app-status-dd-label">' + appEsc_(label) + '</span>'
+    + '<span class="app-status-dd-caret" aria-hidden="true"></span>'
+    + '</button>'
+    + '<div class="app-status-dd-menu" role="listbox">';
   APP_STATUS_OPTIONS.forEach(function (opt) {
-    var sel = String(value || '').toUpperCase() === String(opt || '').toUpperCase() ? ' selected' : '';
-    var label = appStatusDisplayLabel_(opt);
-    h += '<option value="' + appEsc_(opt) + '"' + sel + '>' + appEsc_(label) + '</option>';
+    var optClass = appStatusClass_(opt);
+    var optLabel = appStatusDisplayLabel_(opt);
+    var sel = String(value || '').toUpperCase() === String(opt || '').toUpperCase() ? ' app-status-dd-opt-selected' : '';
+    h += '<button type="button" class="app-status-dd-opt ' + optClass + sel + '" data-value="' + appEsc_(opt) + '" onclick="appStatusDdPick_(event,this)">' + appEsc_(optLabel) + '</button>';
   });
-  h += '</select>';
+  h += '</div>'
+    + '<input type="hidden" data-app-field="status" value="' + appEsc_(value || '') + '">'
+    + '</div>';
   return h;
 }
 
-function appOnStatusChange_(el) {
-  if (!el) return;
-  el.className = 'app-status-select ' + appStatusClass_(el.value);
-  appSaveRow_(el.getAttribute('data-app-id'));
+function appStatusDdCloseAll_() {
+  document.querySelectorAll('.app-status-dd.open').forEach(function (el) {
+    el.classList.remove('open');
+    var menu = el.querySelector('.app-status-dd-menu');
+    if (menu) {
+      menu.style.position = '';
+      menu.style.left = '';
+      menu.style.top = '';
+      menu.style.width = '';
+      menu.style.zIndex = '';
+    }
+  });
+}
+
+function appStatusDdToggle_(ev, btn) {
+  if (ev) ev.stopPropagation();
+  var wrap = btn.closest('.app-status-dd');
+  if (!wrap) return;
+  var menu = wrap.querySelector('.app-status-dd-menu');
+  var wasOpen = wrap.classList.contains('open');
+  appStatusDdCloseAll_();
+  if (wasOpen || !menu) return;
+  wrap.classList.add('open');
+  var r = btn.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.left = r.left + 'px';
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.style.width = Math.max(r.width, 210) + 'px';
+  menu.style.zIndex = '10000';
+}
+
+function appStatusDdPick_(ev, optBtn) {
+  if (ev) ev.stopPropagation();
+  var wrap = optBtn.closest('.app-status-dd');
+  if (!wrap) return;
+  var value = optBtn.getAttribute('data-value') || '';
+  var hidden = wrap.querySelector('[data-app-field="status"]');
+  var btn = wrap.querySelector('.app-status-dd-btn');
+  var labelEl = wrap.querySelector('.app-status-dd-label');
+  if (hidden) hidden.value = value;
+  if (btn) btn.className = 'app-status-dd-btn ' + appStatusClass_(value);
+  if (labelEl) labelEl.textContent = appStatusDisplayLabel_(value);
+  wrap.querySelectorAll('.app-status-dd-opt').forEach(function (el) {
+    el.classList.toggle('app-status-dd-opt-selected', el === optBtn);
+  });
+  appStatusDdCloseAll_();
+  appSaveRow_(wrap.getAttribute('data-app-id'));
 }
 
 function appCountsHtml_() {
@@ -537,6 +589,12 @@ function appLogout_() {
 
 function appInit_() {
   appPopulateFilters_();
+  if (!document.body._appStatusDdBound) {
+    document.body._appStatusDdBound = true;
+    document.addEventListener('click', appStatusDdCloseAll_);
+    window.addEventListener('scroll', appStatusDdCloseAll_, true);
+    window.addEventListener('resize', appStatusDdCloseAll_);
+  }
   if (!empireAuthPageBoot({
     dept: APP_DEPT,
     sendToHomeLogin: false,
